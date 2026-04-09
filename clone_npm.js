@@ -31,10 +31,77 @@ let CodingEditPath = '' //软件地址
 
 
 
+// 根据端口号查找并杀死占用该端口的进程
+async function killProcessByPort(port) {
+    const platform = os.platform();
+    let command;
+    if (platform === 'win32') {
+        // Windows: netstat -ano 查找监听端口的PID
+        command = `netstat -ano | findstr :${port} | findstr LISTENING`;
+    } else if (platform === 'darwin') {
+        // macOS
+        command = `lsof -i :${port} -t -sTCP:LISTEN`;
+    } else {
+        // Linux
+        command = `lsof -i :${port} -t -sTCP:LISTEN 2>/dev/null || ss -tlnp "sport = :${port}" | grep -oP 'pid=\\K[0-9]+'`;
+    }
+
+    return new Promise((resolve) => {
+        exec(command, (err, stdout) => {
+            if (err || !stdout.trim()) {
+                console.log(`ℹ️  端口 ${port} 未被占用，无需清理`);
+                resolve(false);
+                return;
+            }
+
+            let pids = [];
+            if (platform === 'win32') {
+                // Windows netstat 输出格式：TCP  0.0.0.0:3000  0.0.0.0:0  LISTENING  12345
+                const lines = stdout.trim().split('\n');
+                for (const line of lines) {
+                    const parts = line.trim().split(/\s+/);
+                    const pid = parseInt(parts[parts.length - 1]);
+                    if (!isNaN(pid) && pid > 0) {
+                        pids.push(pid);
+                    }
+                }
+            } else {
+                // macOS/Linux lsof 直接输出PID（每行一个）
+                pids = stdout.trim().split('\n')
+                    .map(p => parseInt(p.trim()))
+                    .filter(p => !isNaN(p) && p > 0);
+            }
+
+            // 去重
+            pids = [...new Set(pids)];
+            if (pids.length === 0) {
+                console.log(`ℹ️  端口 ${port} 未找到占用进程`);
+                resolve(false);
+                return;
+            }
+
+            for (const pid of pids) {
+                try {
+                    if (platform === 'win32') {
+                        // Windows 用 taskkill 强制终止
+                        execSync(`taskkill /PID ${pid} /F`, { stdio: 'ignore' });
+                    } else {
+                        process.kill(pid, 'SIGKILL');
+                    }
+                    console.log(`✅ 已杀死占用端口 ${port} 的进程 PID：${pid}`);
+                } catch (killErr) {
+                    console.warn(`⚠️  杀死进程 ${pid} 失败：${killErr.message}，请手动处理`);
+                }
+            }
+            resolve(true);
+        });
+    });
+}
+
 // 1. 自动启动配置服务并打开浏览器
 async function startConfigServer() {
     try {
-        // ========== 修复1：安全杀死旧进程 ==========
+        // ========== 修复1：安全杀死旧进程（基于PID文件） ==========
         if (fs.existsSync(SERVER_PID_FILE)) {
             const pidStr = fs.readFileSync(SERVER_PID_FILE, 'utf8').trim();
             const pid = parseInt(pidStr);
@@ -66,6 +133,10 @@ async function startConfigServer() {
                 console.log(`ℹ️  PID文件内容无效，已删除`);
             }
         }
+
+        // ========== 修复2：基于端口号兜底杀进程（解决重装后PID文件丢失的问题） ==========
+        await killProcessByPort(3000);
+
         // ========== 启动新服务 ==========
         console.log(`🚀 正在启动配置服务...`);
         serverProcess = spawn('node', [SERVER_FILE], {
