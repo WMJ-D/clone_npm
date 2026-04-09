@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <title>AI 对话中心</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #fff;
+    }
+
+    body {
+      padding: 20px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 24px;
+      padding: 20px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .title {
+      font-size: 24px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #00d9ff 0%, #a855f7 50%, #ff6b6b 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: rgba(255,255,255,0.6);
+      font-weight: 400;
+    }
+
+    .back-btn {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      padding: 8px 14px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.3s;
+      backdrop-filter: blur(10px);
+      z-index: 100;
+    }
+
+    .back-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .back-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: rgba(255,255,255,0.9);
+    }
+
+    .section-title::before {
+      content: "";
+      width: 3px;
+      height: 14px;
+      background: linear-gradient(180deg, #00d9ff, #a855f7);
+      border-radius: 2px;
+    }
+
+    .brands-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+    }
+
+    .brand-card {
+      background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 14px;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+
+    .brand-card:hover {
+      transform: translateY(-4px) scale(1.02);
+      background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.06) 100%);
+      border-color: rgba(0, 217, 255, 0.4);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.3), 0 0 30px rgba(0, 217, 255, 0.1);
+    }
+
+    .brand-card:hover .card-arrow {
+      transform: translateX(4px);
+      color: #00d9ff;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .brand-logo {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      object-fit: contain;
+      background: #fff;
+      padding: 4px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+
+    .brand-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .brand-description {
+      font-size: 11px;
+      color: rgba(255,255,255,0.5);
+      line-height: 1.4;
+      margin-bottom: 10px;
+    }
+
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .card-tag {
+      padding: 4px 8px;
+      background: rgba(0, 217, 255, 0.12);
+      border-radius: 12px;
+      font-size: 10px;
+      color: #00d9ff;
+      font-weight: 500;
+    }
+
+    .card-arrow {
+      color: rgba(255,255,255,0.3);
+      transition: all 0.3s;
+    }
+
+    .card-arrow svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* 响应式设计 */
+    @media (max-width: 768px) {
+      body {
+        padding: 12px;
+      }
+
+      .header {
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+
+      .title {
+        font-size: 18px;
+      }
+
+      .subtitle {
+        font-size: 12px;
+      }
+
+      .brands-grid {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 10px;
+      }
+
+      .brand-card {
+        padding: 12px;
+      }
+
+      .brand-logo {
+        width: 24px;
+        height: 24px;
+      }
+
+      .brand-name {
+        font-size: 12px;
+      }
+
+      .back-btn {
+        top: 10px;
+        left: 10px;
+        padding: 10px 16px;
+        font-size: 13px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <a href="/ai-models.html" class="back-btn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </svg>
+    返回模型列表
+  </a>
+
+  <div class="header">
+    <h1 class="title">AI 对话中心</h1>
+    <p class="subtitle">选择一个 AI 平台，快速跳转到对应网站开始对话</p>
+  </div>
+
+  <h2 class="section-title">国产 AI 平台</h2>
+  <div class="brands-grid" id="domesticGrid"></div>
+
+  <h2 class="section-title" style="margin-top: 24px;">国外 AI 平台</h2>
+  <div class="brands-grid" id="foreignGrid"></div>
+
+  <script>
+    const aiBrands = [
+      {
+        id: 'doubao',
+        name: '豆包',
+        url: 'https://www.doubao.com/chat',
+        description: '字节跳动推出的 AI 助手，免费使用，适合日常对话',
+        logo: 'https://lf-flow-web-cdn.doubao.com/obj/flow-doubao/favicon/64x64.png',
+        tag: '免费使用',
+        category: 'domestic'
+      },
+      {
+        id: 'deepseek',
+        name: 'DeepSeek',
+        url: 'https://chat.deepseek.com/',
+        description: '深度求索公司的 AI 助手，支持 128K 上下文和联网搜索',
+        logo: 'https://fe-static.deepseek.com/chat/favicon.svg',
+        tag: '国产新秀',
+        category: 'domestic'
+      },
+      {
+        id: 'kimi',
+        name: 'Kimi Chat',
+        url: 'https://kimi.moonshot.cn/',
+        description: '月之暗面推出的 AI 助手，支持 200K 上下文，擅长文件分析',
+        logo: 'https://kimi.moonshot.cn/favicon.ico',
+        tag: '国产热门',
+        category: 'domestic'
+      },
+      {
+        id: 'qwen',
+        name: '通义千问',
+        url: 'https://tongyi.aliyun.com/qianwen/',
+        description: '阿里巴巴推出的中文 AI 助手，集成阿里云生态',
+        logo: 'https://img.alicdn.com/imgextra/i4/O1CN01x18T3k1wEvEeaQANu_!!6000000006277-55-tps-48-48.svg',
+        tag: '国产大厂',
+        category: 'domestic'
+      },
+      {
+        id: 'chatglm',
+        name: '智谱清言',
+        url: 'https://chatglm.cn/',
+        description: '智谱 AI 推出的 AI 助手，基于 GLM 模型，擅长编程',
+        logo: 'https://chatglm.cn/favicon.ico',
+        tag: '国产技术',
+        category: 'domestic'
+      },
+      {
+        id: 'coze',
+        name: 'Coze',
+        url: 'https://www.coze.cn/',
+        description: '字节跳动推出的 AI 应用平台，支持自定义知识库和工作流',
+        logo: 'https://www.coze.cn/favicon.ico',
+        tag: 'AI 应用',
+        category: 'domestic'
+      },
+      {
+        id: 'baichuan',
+        name: '百川智能',
+        url: 'https://www.baichuan-ai.com/',
+        description: '百川智能推出的 AI 助手，专注中文理解和多轮对话',
+        logo: 'https://www.baichuan-ai.com/favicon.ico',
+        tag: '国产技术',
+        category: 'domestic'
+      },
+      {
+        id: '360',
+        name: '360智脑',
+        url: 'https://ai.360.com/',
+        description: '360 公司推出的 AI 助手，专注安全场景和企业应用',
+        logo: 'https://ai.360.com/favicon.ico',
+        tag: '国产大厂',
+        category: 'domestic'
+      },
+      {
+        id: 'xiaomi',
+        name: '小米 AI 助手',
+        url: 'https://aistudio.xiaomimimo.com/',
+        description: '小米 AI 实验室推出的 AI 对话助手，支持多种场景对话',
+        logo: 'https://aistudio.xiaomimimo.com/favicon.0619b0d2.png',
+        tag: '国产大厂',
+        category: 'domestic'
+      },
+      {
+        id: 'wenxin',
+        name: '文心一言',
+        url: 'https://yiyan.baidu.com/',
+        description: '百度推出的 AI 对话助手，基于文心大模型，擅长中文理解',
+        logo: 'https://eb-static.cdn.bcebos.com/logo/favicon.ico',
+        tag: '国产大厂',
+        category: 'domestic'
+      },
+      {
+        id: 'yuanbao',
+        name: '腾讯元宝',
+        url: 'https://yuanbao.tencent.com/chat/naQivTmsDa',
+        description: '腾讯推出的 AI 助手，集成多种能力，支持多场景对话',
+        logo: 'https://yuanbao.tencent.com/favicon.ico',
+        tag: '国产大厂',
+        category: 'domestic'
+      },
+      {
+        id: 'minimax',
+        name: 'Minimax',
+        url: 'https://agent.minimaxi.com/',
+        description: 'MiniMax 推出的 AI 智能体平台，支持多种 AI 应用',
+        logo: 'https://agent.minimaxi.com/favicon.ico',
+        tag: 'AI 应用',
+        category: 'domestic'
+      },
+      {
+        id: 'openai',
+        name: 'OpenAI ChatGPT',
+        url: 'https://chat.openai.com/',
+        description: 'OpenAI 推出的 AI 对话助手，支持 GPT-4 等多种模型，功能全面',
+        logo: 'https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg',
+        tag: '国际热门',
+        category: 'foreign'
+      },
+      {
+        id: 'claude',
+        name: 'Claude AI',
+        url: 'https://claude.ai/',
+        description: 'Anthropic 公司开发的 AI 助手，注重安全性和长篇写作',
+        logo: 'https://claude.ai/favicon.ico',
+        tag: '国际热门',
+        category: 'foreign'
+      },
+      {
+        id: 'gemini',
+        name: 'Google Gemini',
+        url: 'https://gemini.google.com/',
+        description: 'Google 推出的 AI 助手，集成 Google 搜索和图像生成功能',
+        logo: 'https://www.gstatic.com/images/branding/product/2x/gemini_48dp.png',
+        tag: '国际大厂',
+        category: 'foreign'
+      },
+      {
+        id: 'copilot',
+        name: 'GitHub Copilot',
+        url: 'https://github.com/features/copilot',
+        description: '微软推出的 AI 编程助手，集成在编辑器中，支持代码补全',
+        logo: 'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png',
+        tag: '编程利器',
+        category: 'foreign'
+      }
+    ];
+
+    function initBrands() {
+      const domesticBrands = aiBrands.filter(b => b.category === 'domestic');
+      const foreignBrands = aiBrands.filter(b => b.category === 'foreign');
+      
+      document.getElementById('domesticGrid').innerHTML = domesticBrands.map(brand => `
+        <a href="${brand.url}" target="_blank" class="brand-card">
+          <div class="card-header">
+            <img src="${brand.logo}" alt="${brand.name}" class="brand-logo" 
+                 onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iOCIgZmlsbD0iIzRjYWY1MCIvPjx0ZXh0IHg9IjI0IiB5PSIzMiIgZm9udC1zaXplPSIyMCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkE8L3RleHQ+PC9zdmc+'">
+            <span class="brand-name">${brand.name}</span>
+          </div>
+          <p class="brand-description">${brand.description}</p>
+          <div class="card-footer">
+            <span class="card-tag">${brand.tag}</span>
+            <span class="card-arrow">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </span>
+          </div>
+        </a>
+      `).join('');
+      
+      document.getElementById('foreignGrid').innerHTML = foreignBrands.map(brand => `
+        <a href="${brand.url}" target="_blank" class="brand-card">
+          <div class="card-header">
+            <img src="${brand.logo}" alt="${brand.name}" class="brand-logo" 
+                 onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iOCIgZmlsbD0iIzRjYWY1MCIvPjx0ZXh0IHg9IjI0IiB5PSIzMiIgZm9udC1zaXplPSIyMCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkE8L3RleHQ+PC9zdmc+'">
+            <span class="brand-name">${brand.name}</span>
+          </div>
+          <p class="brand-description">${brand.description}</p>
+          <div class="card-footer">
+            <span class="card-tag">${brand.tag}</span>
+            <span class="card-arrow">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </span>
+          </div>
+        </a>
+      `).join('');
+    }
+
+    window.onload = initBrands;
+  </script>
+</body>
+</html>

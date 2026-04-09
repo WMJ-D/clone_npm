@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <title>AI 模型列表</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #fff;
+      padding: 20px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 16px 20px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .header-title {
+      font-size: 20px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #00d9ff 0%, #a855f7 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .header-btn {
+      padding: 8px 14px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.3s;
+    }
+
+    .header-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+    }
+
+    .header-btn.primary {
+      background: linear-gradient(135deg, #00d9ff, #a855f7);
+      border: none;
+    }
+
+    .header-btn.primary:hover {
+      box-shadow: 0 8px 25px rgba(0, 217, 255, 0.4);
+    }
+
+    .api-info {
+      background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      backdrop-filter: blur(10px);
+    }
+
+    .api-tabs {
+      display: flex;
+      margin-bottom: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .api-tab {
+      padding: 8px 16px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      font-size: 12px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.5);
+      transition: all .2s;
+    }
+
+    .api-tab:hover {
+      color: #00d9ff;
+    }
+
+    .api-tab.active {
+      color: #00d9ff;
+      border-bottom-color: #00d9ff;
+    }
+
+    .api-info .row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+      gap: 10px;
+    }
+
+    .api-info .row:last-child {
+      margin-bottom: 0;
+    }
+
+    .api-info label {
+      font-weight: 600;
+      min-width: 60px;
+      color: rgba(255,255,255,0.8);
+      font-size: 12px;
+    }
+
+    .api-info input {
+      flex: 1;
+      padding: 8px 12px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px;
+      font-size: 12px;
+      color: #fff;
+      transition: all 0.3s;
+    }
+
+    .api-info input:focus {
+      outline: none;
+      border-color: #00d9ff;
+      box-shadow: 0 0 10px rgba(0, 217, 255, 0.15);
+    }
+
+    .api-info input::placeholder {
+      color: rgba(255,255,255,0.3);
+    }
+
+    .api-info button {
+      padding: 8px 16px;
+      background: linear-gradient(135deg, #00d9ff, #a855f7);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+
+    .api-info button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0, 217, 255, 0.4);
+    }
+
+    .api-info .btn-back {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .api-info .btn-back:hover {
+      background: rgba(255,255,255,0.2);
+      box-shadow: none;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: rgba(255,255,255,0.9);
+    }
+
+    .section-title::before {
+      content: "";
+      width: 3px;
+      height: 14px;
+      background: linear-gradient(180deg, #00d9ff, #a855f7);
+      border-radius: 2px;
+    }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .tab {
+      padding: 6px 12px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      cursor: pointer;
+      font-size: 12px;
+      color: rgba(255,255,255,0.7);
+      transition: all .3s;
+    }
+
+    .tab:hover {
+      border-color: #00d9ff;
+      color: #00d9ff;
+      background: rgba(0, 217, 255, 0.1);
+    }
+
+    .tab.active {
+      background: linear-gradient(135deg, #00d9ff, #a855f7);
+      color: #fff;
+      border-color: transparent;
+      box-shadow: 0 4px 15px rgba(0, 217, 255, 0.3);
+    }
+
+    .tab .count {
+      font-size: 10px;
+      opacity: .7;
+      margin-left: 3px;
+    }
+
+    .models-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 10px;
+    }
+
+    .model-card {
+      background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 12px 14px;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .model-card:hover {
+      transform: translateY(-3px) scale(1.01);
+      background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.06) 100%);
+      border-color: rgba(0, 217, 255, 0.4);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3), 0 0 25px rgba(0, 217, 255, 0.1);
+    }
+
+    .model-card:hover .copy-icon {
+      color: #00d9ff;
+      transform: scale(1.1);
+    }
+
+    .model-card .name {
+      font-size: 12px;
+      color: rgba(255,255,255,0.9);
+      word-break: break-all;
+      font-weight: 500;
+    }
+
+    .model-card .copy-icon {
+      color: rgba(255,255,255,0.4);
+      font-size: 16px;
+      flex-shrink: 0;
+      margin-left: 12px;
+      transition: all 0.3s;
+    }
+
+    .model-card.copied {
+      border-color: #00d9ff;
+      background: rgba(0, 217, 255, 0.15);
+    }
+
+    .toast {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #00d9ff, #a855f7);
+      color: #fff;
+      padding: 8px 18px;
+      border-radius: 20px;
+      font-size: 12px;
+      display: none;
+      z-index: 999;
+      box-shadow: 0 4px 15px rgba(0, 217, 255, 0.3);
+      font-weight: 500;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 30px 20px;
+      color: rgba(255,255,255,0.5);
+      font-size: 13px;
+    }
+
+    .error {
+      text-align: center;
+      padding: 20px;
+      color: #ff6b6b;
+      font-size: 12px;
+      background: rgba(255, 107, 107, 0.1);
+      border-radius: 8px;
+      border: 1px solid rgba(255, 107, 107, 0.3);
+    }
+
+    .stats {
+      color: rgba(255,255,255,0.6);
+      font-size: 12px;
+      margin-bottom: 10px;
+      padding-left: 4px;
+    }
+
+    /* 响应式设计 */
+    @media (max-width: 768px) {
+      body {
+        padding: 12px;
+      }
+
+      .header {
+        flex-direction: column;
+        gap: 12px;
+        padding: 14px;
+      }
+
+      .header-title {
+        font-size: 16px;
+      }
+
+      .header-actions {
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      .api-info {
+        padding: 14px;
+      }
+
+      .api-info .row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .api-info label {
+        margin-bottom: 4px;
+      }
+
+      .api-info button {
+        width: 100%;
+      }
+
+      .models-grid {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">
+    <h1 class="header-title">AI 模型列表</h1>
+    <div class="header-actions">
+      <a href="/ai-chat.html" class="header-btn">AI 对话</a>
+      <a href="/config-editor.html" class="header-btn">返回配置</a>
+    </div>
+  </div>
+
+  <div class="api-info">
+    <div class="api-tabs">
+      <div class="api-tab active" data-index="0">API 1</div>
+      <div class="api-tab" data-index="1">API 2</div>
+      <div class="api-tab" data-index="2">API 3</div>
+    </div>
+    <div class="row">
+      <label>API URL：</label>
+      <input type="text" id="apiUrl" value="http://192.168.82.252:8318/v1" placeholder="https://api.openai.com/v1">
+    </div>
+    <div class="row">
+      <label>API Key：</label>
+      <input type="text" id="apiKey" value="sk-01-33012860-73a4-465b-be66-73c3b618eca3" placeholder="sk-xxx">
+      <button id="fetchBtn" onclick="fetchModels()">查询模型</button>
+      
+    </div>
+  </div>
+
+
+  <h2 class="section-title">模型分类</h2>
+  <div class="tabs" id="tabs"></div>
+  <div class="stats" id="stats"></div>
+  <div id="content">
+    <div class="loading">请点击「查询模型」获取可用模型列表</div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // API 配置数据
+    const apiConfigs = [
+      {
+        url: 'http://192.168.82.252:8318/v1',
+        key: 'sk-01-33012860-73a4-465b-be66-73c3b618eca3'
+      },
+      {
+        url: 'http://192.168.82.252:8319/v1',
+        key: 'sk-02-21c522d2-4dce-4af2-aa24-11f79d8c4a2f'
+      },
+      {
+        url: 'http://192.168.82.252:8320/v1',
+        key: 'sk-03-5b4bc65b-69c6-42c6-9395-daf862cf5584'
+      }
+    ];
+
+    let allModels = [];
+    let groupedModels = {};
+    let currentTab = '全部';
+    
+    // 初始化 API 标签页
+    function initApiTabs() {
+      const apiTabs = document.querySelectorAll('.api-tab');
+      apiTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          const index = parseInt(tab.dataset.index);
+          // 更新标签页状态
+          apiTabs.forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          // 更新 API URL 和 Key
+          document.getElementById('apiUrl').value = apiConfigs[index].url;
+          document.getElementById('apiKey').value = apiConfigs[index].key;
+          // 自动查询模型
+          fetchModels();
+        });
+      });
+    }
+    
+    // 页面加载完成后初始化
+    window.onload = function() {
+      initApiTabs();
+      fetchModels();
+    };
+    function showToast(text) {
+      const t = document.getElementById('toast');
+      t.textContent = text;
+      t.style.display = 'block';
+      setTimeout(() => t.style.display = 'none', 1500);
+    }
+
+    function copyText(text, cardEl) {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast(`已复制: ${text}`);
+        cardEl.classList.add('copied');
+        setTimeout(() => cardEl.classList.remove('copied'), 1000);
+      }).catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast(`已复制: ${text}`);
+      });
+    }
+
+    function getGroup(modelId) {
+      const parts = modelId.split('-');
+      return parts[0] || '其他';
+    }
+
+    function groupModels(models) {
+      const groups = {};
+      models.forEach(id => {
+        const g = getGroup(id);
+        if (!groups[g]) groups[g] = [];
+        groups[g].push(id);
+      });
+      // 每组内排序
+      Object.keys(groups).forEach(k => groups[k].sort());
+      return groups;
+    }
+
+    function renderTabs() {
+      const tabsEl = document.getElementById('tabs');
+      const keys = Object.keys(groupedModels).sort();
+      let html = `<div class="tab ${currentTab === '全部' ? 'active' : ''}" onclick="switchTab('全部')">全部<span class="count">(${allModels.length})</span></div>`;
+      keys.forEach(k => {
+        const count = groupedModels[k].length;
+        html += `<div class="tab ${currentTab === k ? 'active' : ''}" onclick="switchTab('${k}')">${k}<span class="count">(${count})</span></div>`;
+      });
+      tabsEl.innerHTML = html;
+    }
+
+    function renderModels() {
+      const contentEl = document.getElementById('content');
+      const statsEl = document.getElementById('stats');
+      let models;
+      if (currentTab === '全部') {
+        models = [...allModels].sort();
+      } else {
+        models = groupedModels[currentTab] || [];
+      }
+      statsEl.textContent = `当前显示 ${models.length} 个模型`;
+      if (models.length === 0) {
+        contentEl.innerHTML = '<div class="loading">该分组下没有模型</div>';
+        return;
+      }
+      contentEl.innerHTML = '<div class="models-grid">' + models.map(id =>
+        `<div class="model-card" onclick="copyText('${id}', this)">
+                    <span class="name">${id}</span>
+                    <span class="copy-icon">📋</span>
+                </div>`
+      ).join('') + '</div>';
+    }
+
+    function switchTab(tab) {
+      currentTab = tab;
+      renderTabs();
+      renderModels();
+    }
+
+    async function fetchModels() {
+      const apiUrl = document.getElementById('apiUrl').value.trim();
+      const apiKey = document.getElementById('apiKey').value.trim();
+      if (!apiUrl || !apiKey) { showToast('请填写 API URL 和 Key'); return; }
+
+      const contentEl = document.getElementById('content');
+      contentEl.innerHTML = '<div class="loading">正在查询模型列表...</div>';
+      document.getElementById('tabs').innerHTML = '';
+      document.getElementById('stats').textContent = '';
+
+      try {
+        const res = await fetch(`${apiUrl}/models`, {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${apiKey}` }
+        });
+        const json = await res.json();
+        if (json.error) { throw new Error(json.error.message); }
+
+        allModels = json.data.map(item => item.id);
+        groupedModels = groupModels(allModels);
+        currentTab = '全部';
+        renderTabs();
+        renderModels();
+      } catch (e) {
+        contentEl.innerHTML = `<div class="error">查询失败: ${e.message}</div>`;
+      }
+    }
+  </script>
+</body>
+
+</html>

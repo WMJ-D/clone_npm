@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Clone-NPM 配置编辑器</title>
+    <link rel="stylesheet" href="main.css">
+</head>
+
+<body>
+    <div class="msg" id="msg"></div>
+
+    <!-- 右上角已勾选执行项的悬浮面板 -->
+    <div class="enabled-items-panel">
+        <div class="title">已勾选执行的项目</div>
+        <div id="enabledItemsList" class="empty-tip">暂无勾选的执行项</div>
+    </div>
+    <div class="terminal-container">
+        <!-- 新增：终端输出面板 -->
+        <div class="terminal-panel" id="terminalPanel">
+            <div class="terminal-header">
+                <span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="4 17 10 11 4 5"></polyline>
+                        <line x1="12" y1="19" x2="20" y2="19"></line>
+                    </svg>
+                    命令执行日志
+                </span>
+                <span>
+                    <button class="clear-btn" id="clearTerminal1">关闭</button>
+                    <button class="clear-btn" id="clearTerminal">清空</button>
+                </span>
+            </div>
+            <div class="log" id="terminalLog"></div>
+        </div>
+        <div class="container" id="mainContainer">
+            <div class="header">
+                <h2>Clone-NPM 配置管理</h2> 
+                <a href="/ai-models.html">AIModelIDs</a>
+                <a href="/ai-chat.html">AI对话合集</a>
+            </div>
+            <!-- 编辑器路径配置 -->
+            <div class="editor-path">
+                <label>项目运行IDE：</label>
+                <select id="codingEditPath" style="padding: 5px; margin-right: 10px;">
+                    <option value="">请选择编辑器路径</option>
+                </select>
+                <!-- 可以在电脑本地选择 -->
+                <!-- <button class="btn-select" id="selectCodingEditPath">选择</button> -->
+            </div>
+            
+            <!-- 编辑器路径列表 -->
+            <div class="editor-path-list">
+                <div>
+                    <label>编辑器路径选项：</label>
+                    <button class="btn-primary" id="addEditPath">新增</button>
+                </div>
+                <div id="editPathList"></div>
+            </div>
+
+                <div class="main-content">
+                <!-- 项目名称标题tab -->
+                <div class="pName-tabs">
+                    <div id="pName-tabs-list"></div>
+                </div>
+                <!-- 配置项列表 -->
+                <div id="configList" class="config-list"></div>
+            </div>
+
+
+            <!-- 提示信息 -->
+        </div>
+    </div>
+
+
+    <!-- 右侧悬浮按钮 -->
+    <button class="btn-primary floating-btn" id="addItem">新增配置</button>
+    <button class="btn-primary floating-btn" id="saveAll">保存配置</button>
+    <button class="btn-primary floating-btn" id="refresh">刷新配置</button>
+
+    <!-- 回到顶部按钮 -->
+    <button class="back-to-top" id="backToTop">↑</button>
+
+    <!-- 新增：功能按钮悬浮栏 -->
+    <div class="function-buttons">
+        <button class="function-btn" id="btn-1">1. git clone + 切换分支 + 编辑器打开项目</button>
+        <button class="function-btn" id="btn-2">2. 清除node_modules + npm i 依赖</button>
+        <button class="function-btn" id="btn-3">3. 编辑器打开项目</button>
+        <button class="function-btn" id="btn-4">4. 拉取代码 + npm run dev</button>
+        <button class="function-btn" id="btn-5">5. 按钮一和按钮二</button>
+    </div>
+
+
+
+    <script>
+        // 基础接口地址
+        const API_BASE = 'http://localhost:3000/api';
+        let itemIdCounter = 0;
+        // 新增：终端相关DOM
+        const terminalPanel = document.getElementById('terminalPanel');
+        const terminalLog = document.getElementById('terminalLog');
+        const clearTerminalBtn = document.getElementById('clearTerminal');
+        const closeTerminalBtn = document.getElementById('clearTerminal1');
+        const mainContainer = document.getElementById('mainContainer');
+        closeTerminalBtn.addEventListener('click', () => {
+            terminalPanel.style.display = 'none';
+            mainContainer.style.marginLeft = '0';
+        });
+        // 新增：是否正在执行命令（防止重复点击）
+        let isExecuting = false;
+
+        // 显示提示信息
+        function showMsg(text, isSuccess = true) {
+            const msgEl = document.getElementById('msg');
+            msgEl.textContent = text;
+            msgEl.className = isSuccess ? 'msg msg-success' : 'msg msg-error';
+            msgEl.style.display = 'block';
+            setTimeout(() => msgEl.style.display = 'none', 3000);
+        }
+
+        // 滚动到指定ID的配置项
+        function scrollToItem(itemId) {
+            document.querySelectorAll('.config-item').forEach(item => {
+                item.classList.remove('highlight');
+            });
+            const targetItem = document.getElementById(`config-item-${itemId}`);
+            if (targetItem) {
+                targetItem.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
+                targetItem.classList.add('highlight');
+                setTimeout(() => {
+                    targetItem.classList.remove('highlight');
+                }, 1500);
+            }
+        }
+
+        // 更新右上角已勾选执行项的面板
+        function updateEnabledItemsPanel() {
+            const enabledItemsListEl = document.getElementById('enabledItemsList');
+            const enabledItems = [];
+            document.querySelectorAll('.config-item').forEach(item => {
+                const enable = item.querySelector('.enable-checkbox').checked;
+                if (enable) {
+                    const itemId = item.id.split('-')[2];
+                    const pName = item.querySelector('.pName').value.trim() || '未命名项目';
+                    const projectName = item.querySelector('.projectName').value.trim() || '未命名系统';
+                    const gitUrl = item.querySelector('.gitUrl').value.trim() || '无Git地址';
+                    enabledItems.push({
+                        itemId,
+                        pName,
+                        projectName,
+                        gitUrl
+                    });
+                }
+            });
+            if (enabledItems.length === 0) {
+                enabledItemsListEl.className = 'empty-tip';
+                enabledItemsListEl.innerHTML = '暂无勾选的执行项';
+            } else {
+                enabledItemsListEl.className = '';
+                enabledItemsListEl.innerHTML = enabledItems.map(item =>
+                    `<div class="item" onclick="scrollToItem(${item.itemId})">
+                        <span class="name">${item.projectName}</span>
+                    </div>`
+                ).join('');
+            }
+        }
+
+        // 更新项目名称标签列表
+        function updatePNameTabs() {
+            const pNameTabsListEl = document.getElementById('pName-tabs-list');
+            const pNameMap = new Map();
+
+            // 收集所有项目名称并去重
+            document.querySelectorAll('.config-item').forEach(item => {
+                const pName = item.querySelector('.pName').value.trim() || '未命名项目';
+                const itemId = item.id.split('-')[2];
+
+                if (!pNameMap.has(pName)) {
+                    pNameMap.set(pName, []);
+                }
+                pNameMap.get(pName).push(itemId);
+            });
+
+            if (pNameMap.size === 0) {
+                pNameTabsListEl.innerHTML = '<div class="empty-tip">暂无项目</div>';
+            } else {
+                pNameTabsListEl.innerHTML = Array.from(pNameMap.entries()).map(([pName, itemIds]) => {
+                    return `<div class="pName-tab" data-pName="${pName}" onclick="filterByPName('${pName}')">
+                        ${pName}
+                        <span class="count">(${itemIds.length})</span>
+                    </div>`;
+                }).join('');
+            }
+        }
+
+        // 根据项目名称筛选配置项
+        function filterByPName(targetPName) {
+            // 将项目名称是targetPName的放在列表前面，并保存配置项 
+            const configListEl = document.getElementById('configList');
+            const allItems = Array.from(document.querySelectorAll('.config-item'));
+
+            // 将配置项分为两组：匹配的和不匹配的
+            const matchedItems = [];
+            const unmatchedItems = [];
+
+            allItems.forEach(item => {
+                const pName = item.querySelector('.pName').value.trim() || '未命名项目';
+                if (pName === targetPName) {
+                    matchedItems.push(item);
+                    // 高亮显示匹配的配置项
+                    item.classList.add('highlight');
+                    setTimeout(() => {
+                        item.classList.remove('highlight');
+                    }, 1500);
+                } else {
+                    unmatchedItems.push(item);
+                }
+            });
+
+            // 清空列表并重新添加配置项（先添加匹配的，再添加不匹配的）
+            configListEl.innerHTML = '';
+            matchedItems.forEach(item => configListEl.appendChild(item));
+            unmatchedItems.forEach(item => configListEl.appendChild(item));
+
+            // 滚动到第一个匹配的配置项
+            if (matchedItems.length > 0) {
+                matchedItems[0].scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
+            }
+
+            // 保存排序后的配置项
+            saveConfig();
+            // loadConfig();
+        }
+
+        // 创建单个配置项DOM
+        function createConfigItem(data = {}) {
+            const itemId = itemIdCounter++;
+            const item = document.createElement('div');
+            item.id = `config-item-${itemId}`;
+            item.className = 'config-item';
+            item.dataset.index = itemId + 1;
+            item.innerHTML = `
+                <div class="row">
+                    <label>项目名称：</label>
+                    <input type="text" class="pName" value="${data.pName || ''}" placeholder="必填：如 安徽省数字地矿项目">
+                </div>
+                <div class="row">
+                    <label>系统名称：</label>
+                    <input type="text" class="projectName" value="${data.projectName || ''}" placeholder="必填：如 组件库-core-v3">
+                </div>
+                <div class="row">
+                    <label>是否执行：</label>
+                    <input type="checkbox" class="enable-checkbox" ${data.enable ? 'checked' : ''}>
+                    <span style="color: #666; font-size: 12px;">勾选后命令会执行该配置</span>
+                </div>
+                <div class="row">
+                    <label>Gitlab地址：</label>
+                    <input type="text" class="gitUrl" value="${data.gitUrl || ''}" placeholder="必填：http://xxx.git">
+                    <button class="btn-select gitUrl-open" style="margin-left: 5px;">打开</button>
+                </div>
+                <div class="row">
+                    <label>分支：</label>
+                    <input type="text" class="branch" value="${data.branch || 'master'}" placeholder="默认：master">
+                </div>
+                <div class="row">
+                    <label>保存路径：</label>
+                    <input type="text" class="savePath" value="${data.savePath || ''}" placeholder="必填：D:\桌面\项目">
+                </div>
+                <div class="row">
+                    <label>代码子路径：</label>
+                    <input type="text" class="codePath" value="${data.codePath || ''}" placeholder="可选：\项目名\webapp">
+                </div>
+                <div class="row">
+                    <label>测试环境地址：</label>
+                    <input type="text" class="testEnvUrl" value="${data.testEnvUrl || ''}" placeholder="可选：http://测试环境地址">
+                    <button class="btn-select testEnvUrl-open" style="margin-left: 5px;">打开</button>
+                </div>
+                <div class="row">
+                    <label>正式环境地址：</label>
+                    <input type="text" class="prodEnvUrl" value="${data.prodEnvUrl || ''}" placeholder="可选：http://正式环境地址">
+                    <button class="btn-select prodEnvUrl-open" style="margin-left: 5px;">打开</button>
+                </div>
+                <div class="row">
+                    <button class="btn-danger delete-btn">删除</button>
+                </div>
+            `;
+            // 删除按钮事件
+            item.querySelector('.delete-btn').addEventListener('click', () => {
+                if (confirm('确定删除该配置项吗？')) {
+                    item.remove();
+                    updateEnabledItemsPanel();
+                    updatePNameTabs();
+                }
+            });
+            // 勾选框/输入框变化事件
+            const enableCheckbox = item.querySelector('.enable-checkbox');
+            const pNameInput = item.querySelector('.pName');
+            const projectNameInput = item.querySelector('.projectName');
+            const gitUrlInput = item.querySelector('.gitUrl');
+            enableCheckbox.addEventListener('change', () => {
+                updateEnabledItemsPanel();
+                updatePNameTabs();
+            });
+            projectNameInput.addEventListener('input', updateEnabledItemsPanel);
+            gitUrlInput.addEventListener('input', updateEnabledItemsPanel);
+            pNameInput.addEventListener('input', () => {
+                updateEnabledItemsPanel();
+                updatePNameTabs();
+            });
+            
+            // Gitlab地址打开按钮事件
+            const gitUrlOpenBtn = item.querySelector('.gitUrl-open');
+            gitUrlOpenBtn.addEventListener('click', () => {
+                const gitUrl = gitUrlInput.value.trim();
+                if (gitUrl) {
+                    window.open(gitUrl, '_blank');
+                } else {
+                    showMsg('请输入 Gitlab 地址', false);
+                }
+            });
+            
+            // 系统测试环境地址打开按钮事件
+            const testEnvUrlInput = item.querySelector('.testEnvUrl');
+            const testEnvUrlOpenBtn = item.querySelector('.testEnvUrl-open');
+            testEnvUrlOpenBtn.addEventListener('click', () => {
+                const testEnvUrl = testEnvUrlInput.value.trim();
+                if (testEnvUrl) {
+                    window.open(testEnvUrl, '_blank');
+                } else {
+                    showMsg('请输入系统测试环境地址', false);
+                }
+            });
+            
+            // 正式环境地址打开按钮事件
+            const prodEnvUrlInput = item.querySelector('.prodEnvUrl');
+            const prodEnvUrlOpenBtn = item.querySelector('.prodEnvUrl-open');
+            prodEnvUrlOpenBtn.addEventListener('click', () => {
+                const prodEnvUrl = prodEnvUrlInput.value.trim();
+                if (prodEnvUrl) {
+                    window.open(prodEnvUrl, '_blank');
+                } else {
+                    showMsg('请输入正式环境地址', false);
+                }
+            });
+            return item;
+        }
+
+        // 创建编辑器路径项
+        function createEditPathItem(path = '') {
+            const item = document.createElement('div');
+            item.className = 'edit-path-item';
+            item.style.display = 'flex';
+            item.style.alignItems = 'center';
+            item.style.marginBottom = '10px';
+            item.style.padding = '8px';
+            item.style.border = '1px solid #eee';
+            item.style.borderRadius = '4px';
+            item.innerHTML = `
+                <input type="text" class="edit-path-input" value="${path}" placeholder="编辑器路径" style="flex: 1; margin-right: 10px; padding: 5px;">
+                <button class="btn-select edit-path-select" style="margin-right: 5px;">选择</button>
+                <button class="btn-danger edit-path-delete" style="padding: 5px 10px;">删除</button>
+            `;
+            
+            // 输入框变化事件
+            const inputEl = item.querySelector('.edit-path-input');
+            inputEl.addEventListener('input', () => {
+                updateEditPathSelect();
+            });
+            
+            // 选择按钮事件
+            item.querySelector('.edit-path-select').addEventListener('click', async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/select-path`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ type: 'file' })
+                    });
+                    const result = await res.json();
+                    if (result.success && result.path) {
+                        inputEl.value = result.path;
+                        updateEditPathSelect();
+                        showMsg('已选择编辑器路径');
+                    } else if (!result.path) {
+                        showMsg('未选择任何文件', false);
+                    }
+                } catch (err) {
+                    showMsg('选择文件失败：' + err.message, false);
+                }
+            });
+            
+            // 删除按钮事件
+            item.querySelector('.edit-path-delete').addEventListener('click', () => {
+                if (confirm('确定删除该编辑器路径吗？')) {
+                    item.remove();
+                    updateEditPathSelect();
+                }
+            });
+            
+            return item;
+        }
+
+        // 更新编辑器路径下拉选择框
+        function updateEditPathSelect() {
+            const selectEl = document.getElementById('codingEditPath');
+            const currentValue = selectEl.value;
+            
+            // 清空现有选项
+            selectEl.innerHTML = '<option value="">请选择编辑器路径</option>';
+            
+            // 添加编辑器路径列表中的选项
+            document.querySelectorAll('.edit-path-input').forEach(input => {
+                const path = input.value.trim();
+                if (path) {
+                    const option = document.createElement('option');
+                    option.value = path;
+                    option.textContent = path;
+                    selectEl.appendChild(option);
+                }
+            });
+            
+            // 保持当前选择的值
+            if (currentValue) {
+                selectEl.value = currentValue;
+            }
+        }
+
+        // 加载配置
+        async function loadConfig() {
+            try {
+                const res = await fetch(`${API_BASE}/config`);
+                if (!res.ok) throw new Error('配置加载失败');
+                const config = await res.json();
+                
+                // 加载编辑器路径列表
+                const editPathListEl = document.getElementById('editPathList');
+                editPathListEl.innerHTML = '';
+                (config.CodingEditPathList || []).forEach(path => {
+                    editPathListEl.appendChild(createEditPathItem(path));
+                });
+                
+                // 更新下拉选择框
+                updateEditPathSelect();
+                document.getElementById('codingEditPath').value = config.CodingEditPath || '';
+                
+                const configListEl = document.getElementById('configList');
+                configListEl.innerHTML = '';
+                itemIdCounter = 0;
+                (config.configList || []).forEach(item => {
+                    configListEl.appendChild(createConfigItem(item));
+                });
+                updateEnabledItemsPanel();
+                updatePNameTabs();
+                showMsg('配置加载成功！');
+            } catch (err) {
+                showMsg('加载失败：' + err.message, false);
+            }
+        }
+
+        // 保存配置
+        async function saveConfig() {
+            try {
+                const configList = [];
+                document.querySelectorAll('.config-item').forEach(item => {
+                    const enable = item.querySelector('.enable-checkbox').checked;
+                    const pName = item.querySelector('.pName').value.trim();
+                    const projectName = item.querySelector('.projectName').value.trim();
+                    const gitUrl = item.querySelector('.gitUrl').value.trim();
+                    const branch = item.querySelector('.branch').value.trim();
+                    const savePath = item.querySelector('.savePath').value.trim();
+                    const codePath = item.querySelector('.codePath').value.trim();
+                    const testEnvUrl = item.querySelector('.testEnvUrl').value.trim();
+                    const prodEnvUrl = item.querySelector('.prodEnvUrl').value.trim();
+                    // 校验必填项
+                    if (enable) {
+                        if (!pName) {
+                            throw new Error('存在勾选「执行」但未填写项目名称的配置项，请补充！');
+                        }
+                        if (!gitUrl) {
+                            throw new Error('存在勾选「执行」但未填写Git地址的配置项，请补充！');
+                        }
+                        if (!projectName) {
+                            throw new Error(`Git地址【${gitUrl}】勾选了执行，但未填写项目名称，请补充！`);
+                        }
+                        if (!savePath) {
+                            throw new Error(`Git地址【${gitUrl}】勾选了执行，但未填写保存路径，请补充！`);
+                        }
+                        if (!codePath) {
+                            throw new Error(`Git地址【${gitUrl}】勾选了执行，但未填写代码子路径，请补充！`);
+                        }
+                    }
+                    configList.push({
+                        enable,
+                        pName,
+                        projectName,
+                        gitUrl,
+                        branch,
+                        savePath,
+                        codePath,
+                        testEnvUrl,
+                        prodEnvUrl
+                    });
+                });
+                const CodingEditPath = document.getElementById('codingEditPath').value.trim();
+                // 收集编辑器路径列表
+                const CodingEditPathList = [];
+                document.querySelectorAll('.edit-path-input').forEach(input => {
+                    const path = input.value.trim();
+                    if (path) {
+                        CodingEditPathList.push(path);
+                    }
+                });
+                const res = await fetch(`${API_BASE}/save`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        configList,
+                        CodingEditPath,
+                        CodingEditPathList
+                    })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    showMsg('配置保存成功（已覆盖config.json）！');
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (err) {
+                showMsg('保存失败：' + err.message, false);
+            }
+        }
+
+        // 新增：终端日志输出函数
+        function logToTerminal(text, type = 'info') {
+            // 显示终端面板
+            terminalPanel.style.display = 'block';
+            // 创建日志元素
+            const logItem = document.createElement('div');
+            logItem.className = `log log-${type}`;
+            // 添加时间戳
+            const time = new Date().toLocaleTimeString();
+            logItem.textContent = `[${time}] ${text}`;
+            // 追加到日志容器
+            terminalLog.appendChild(logItem);
+            // 自动滚动到底部
+            terminalLog.scrollTop = terminalLog.scrollHeight;
+        }
+
+        function showTerminal() {
+            // mainContainer.style.marginLeft = '530px';
+        }
+        // 新增：执行命令的核心函数
+        async function executeCommand(flag) {
+            // 先保存配置（确保最新配置生效）
+            await saveConfig();
+            // 防止重复执行
+            if (isExecuting) {
+                showMsg('已有命令正在执行，请等待完成！', false);
+                return;
+            }
+            // 检查是否有勾选的配置项
+            const enabledItems = document.querySelectorAll('.enable-checkbox:checked');
+            if (enabledItems.length === 0) {
+                showMsg('请先勾选需要执行的配置项！', false);
+                return;
+            }
+
+            isExecuting = true;
+            // 禁用所有功能按钮
+            document.querySelectorAll('.function-btn').forEach(btn => btn.disabled = true);
+            // 新增：将主容器向右移动，露出终端面板
+            showTerminal();
+            // 清空并显示终端
+            terminalLog.innerHTML = '';
+            logToTerminal(`开始执行命令 [${flag}]...`, 'info');
+
+            try {
+                // 调用后端execute接口（需在server.js中实现）
+                const res = await fetch(`${API_BASE}/execute`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        flag: flag
+                    })
+                });
+
+                // 流式读取响应（模拟终端实时输出）
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+                while (true) {
+                    const {
+                        done,
+                        value
+                    } = await reader.read();
+                    if (done) break;
+                    const chunk = decoder.decode(value);
+                    if (chunk.includes('ERROR')) {
+                        logToTerminal(chunk, 'error');
+                    } else if (chunk.includes('SUCCESS')) {
+                        logToTerminal(chunk, 'success');
+                    } else {
+                        logToTerminal(chunk, 'info');
+                    }
+                }
+
+                if (!res.ok) {
+                    throw new Error(`请求失败：${res.statusText}`);
+                }
+                logToTerminal(`命令 [${flag}] 执行完成！`, 'success');
+                showMsg(`命令 ${flag} 执行成功！`);
+            } catch (err) {
+                logToTerminal(`执行失败：${err.message}`, 'error');
+                showMsg(`命令 ${flag} 执行失败：${err.message}`, false);
+            } finally {
+                isExecuting = false;
+                // 启用所有功能按钮
+                document.querySelectorAll('.function-btn').forEach(btn => btn.disabled = false);
+            }
+        }
+
+        // 绑定回到顶部事件
+        const backToTopBtn = document.getElementById('backToTop');
+
+        // 项目名称标签悬浮功能
+        const pNameTabs = document.querySelector('.pName-tabs');
+        let pNameTabsOffsetTop = 0;
+        let mainContainerOffsetTop = 0;
+        let mainContainerOffsetLeft = 0;
+
+        // 初始化项目名称标签的初始位置
+        function initPNameTabsPosition() {
+            if (pNameTabs && mainContainer) {
+                const pNameRect = pNameTabs.getBoundingClientRect();
+                const mainRect = mainContainer.getBoundingClientRect();
+                pNameTabsOffsetTop = pNameRect.top;
+                mainContainerOffsetTop = mainRect.top;
+                mainContainerOffsetLeft = mainRect.left;
+            }
+        }
+        // 监听mainContainer滚动事件 backToTopBtn回到顶部按钮显示/隐藏
+        mainContainer.addEventListener('scroll', () => {
+            if (mainContainer.scrollTop > 200) {
+                backToTopBtn.style.display = 'block';
+            } else {
+                backToTopBtn.style.display = 'none';
+            }
+        });
+
+        // 监听窗口滚动事件
+        window.addEventListener('scroll', () => {
+            // 项目名称标签悬浮
+            if (pNameTabs && mainContainer) {
+                const mainContainerTop = mainContainer.getBoundingClientRect().top;
+                if (window.scrollY > (pNameTabsOffsetTop - mainContainerOffsetTop) - 20) {
+                    pNameTabs.classList.add('fixed');
+                    pNameTabs.style.left = mainContainerOffsetLeft + 20 + 'px';
+                } else {
+                    pNameTabs.classList.remove('fixed');
+                    pNameTabs.style.left = '';
+                }
+            }
+
+        });
+
+        // 页面加载时自动加载配置和初始化位置
+        window.onload = function () {
+            loadConfig();
+            initPNameTabsPosition();
+        };
+
+        // 窗口大小改变时重新初始化位置
+        window.addEventListener('resize', initPNameTabsPosition);
+        backToTopBtn.addEventListener('click', () => {
+            mainContainer.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+
+        // 绑定基础按钮事件
+        document.getElementById('addItem').addEventListener('click', () => {
+            const newItem = createConfigItem({
+                enable: false
+            });
+            document.getElementById('configList').appendChild(newItem);
+            updateEnabledItemsPanel();
+            updatePNameTabs();
+            // 滚动到新添加的配置项
+            newItem.scrollIntoView({
+                behavior: 'smooth'
+            });
+        });
+        document.getElementById('saveAll').addEventListener('click', saveConfig);
+        document.getElementById('refresh').addEventListener('click', loadConfig);
+        
+        // 绑定新增编辑器路径按钮事件
+        document.getElementById('addEditPath').addEventListener('click', () => {
+            const newEditPathItem = createEditPathItem('');
+            document.getElementById('editPathList').appendChild(newEditPathItem);
+            // 滚动到新添加的编辑器路径项
+            newEditPathItem.scrollIntoView({
+                behavior: 'smooth'
+            });
+        });
+
+        // 新增：绑定编辑器路径选择按钮事件
+        // document.getElementById('selectCodingEditPath').addEventListener('click', async () => {
+        //     try {
+        //         const res = await fetch(`${API_BASE}/select-path`, {
+        //             method: 'POST',
+        //             headers: { 'Content-Type': 'application/json' },
+        //             body: JSON.stringify({ type: 'file' })
+        //         });
+        //         const result = await res.json();
+        //         if (result.success && result.path) {
+        //             document.getElementById('codingEditPath').value = result.path;
+        //             showMsg('已选择编辑器路径');
+        //         } else if (!result.path) {
+        //             showMsg('未选择任何文件', false);
+        //         }
+        //     } catch (err) {
+        //         showMsg('选择文件失败：' + err.message, false);
+        //     }
+        // });
+
+        // 新增：绑定功能按钮事件
+        document.getElementById('btn-1').addEventListener('click', () => executeCommand(1));
+        document.getElementById('btn-2').addEventListener('click', () => executeCommand(2));
+        document.getElementById('btn-3').addEventListener('click', () => executeCommand(3));
+        document.getElementById('btn-4').addEventListener('click', () => executeCommand(4));
+        document.getElementById('btn-5').addEventListener('click', () => executeCommand(5));
+
+        // 新增：绑定清空终端日志事件
+        clearTerminalBtn.addEventListener('click', () => {
+            terminalLog.innerHTML = '';
+            logToTerminal('日志已清空', 'info');
+        });
+    </script>
+</body>
+
+</html>
