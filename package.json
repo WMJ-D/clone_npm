@@ -1,6 +1,6 @@
 {
     "name": "@wmj-code/clone_npm",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "description": "一个自定义命令行工具，打通git clone 和 npm install的流程，解决多/单项目开发中项目切换和项目依赖安装的问题",
     "main": "clone_npm.js",
     "bin": {
