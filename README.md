@@ -33,3 +33,7 @@ cn
 ## 注意事项
 - PowerShell请在管理员权限下执行命令
 - 下载npm依赖时，请确保您本地的项目未运行
+
+## 版本记录
+
+- 1.0.5 增加桌面端，请在全局node包下找到依赖@wmj-code/clone_npm，打开文件夹 Clone-NPM Desktop Setup 1.0.0
