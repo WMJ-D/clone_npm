@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Clone-NPM 配置管理</title>
+    <link rel="stylesheet" href="./styles/main.css">
+</head>
+<body>
+    <!-- 主题切换按钮 -->
+    <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
+
+    <!-- 提示消息 -->
+    <div class="msg" id="msg"></div>
+
+    <!-- 右上角已勾选执行项的悬浮面板 -->
+    <div class="enabled-items-panel">
+        <div class="title">已勾选执行的项目</div>
+        <div id="enabledItemsList" class="empty-tip">暂无勾选的执行项</div>
+    </div>
+
+    <div class="terminal-container">
+        <!-- 终端输出面板 -->
+        <div class="terminal-panel" id="terminalPanel">
+            <div class="terminal-header">
+                <span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="4 17 10 11 4 5"></polyline>
+                        <line x1="12" y1="19" x2="20" y2="19"></line>
+                    </svg>
+                    命令执行日志
+                </span>
+                <span>
+                    <button class="clear-btn" id="closeTerminalBtn">关闭</button>
+                    <button class="clear-btn" id="clearTerminalBtn2">清空</button>
+                </span>
+            </div>
+            <div class="log" id="terminalLog"></div>
+        </div>
+        <div class="container" id="mainContainer">
+            <div class="header">
+                <h2>Clone-NPM 配置管理</h2>
+                <div class="header-links">
+                    <a href="#" onclick="switchPage('ai-models')">AIModelIDs</a>
+                    <a href="#" onclick="switchPage('ai-chat')">AI对话合集</a>
+                </div>
+            </div>
+
+            <!-- 编辑器路径配置 -->
+            <div class="editor-path">
+                <label>项目运行IDE：</label>
+                <select id="codingEditPath" style="padding: 5px; margin-right: 10px;">
+                    <option value="">请选择编辑器路径</option>
+                </select>
+            </div>
+
+            <!-- 编辑器路径列表 -->
+            <div class="editor-path-list">
+                <div>
+                    <label>编辑器路径选项：</label>
+                    <button class="btn-primary" id="addEditPath">新增</button>
+                </div>
+                <div id="editPathList"></div>
+            </div>
+
+            <div class="main-content">
+                <!-- 项目名称标题tab（左侧分组树） -->
+                <div class="pName-tabs">
+                    <div id="pName-tabs-list"></div>
+                </div>
+                <!-- 配置项列表 -->
+                <div id="configList" class="config-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右侧悬浮按钮 -->
+    <button class="floating-btn btn-primary" id="addItem">新增配置</button>
+    <button class="floating-btn btn-primary" id="saveAll">保存配置</button>
+    <button class="floating-btn btn-primary" id="refresh">刷新配置</button>
+
+    <!-- 回到顶部按钮 -->
+    <button class="back-to-top" id="backToTop">↑</button>
+
+    <!-- 功能按钮悬浮栏 (1-5) -->
+    <div class="function-buttons">
+        <button class="function-btn" id="btn-1">1. git clone + 切换分支 + 编辑器打开项目</button>
+        <button class="function-btn" id="btn-2">2. 清除node_modules + npm i 依赖</button>
+        <button class="function-btn" id="btn-3">3. 编辑器打开项目</button>
+        <button class="function-btn" id="btn-4">4. 拉取代码 + npm run dev</button>
+        <button class="function-btn" id="btn-5">5. 按钮一和按钮二</button>
+    </div>
+
+    <!-- ==================== AI 模型查询页面 ==================== -->
+    <!-- ==================== AI Model IDs 查询页面 ==================== -->
+    <div class="page-container" id="pageAiModels" style="display:none;">
+        <div class="aim-header">
+            <h1 class="aim-title">AI 模型列表</h1>
+            <div class="aim-actions">
+                <a href="#" onclick="switchPage('ai-chat')" class="aim-btn">AI 对话</a>
+                <a href="#" onclick="switchPage('config')" class="aim-btn">返回配置</a>
+            </div>
+        </div>
+
+        <!-- API 配置区：URL + Key + Tab 动态渲染 + 管理按钮 -->
+        <div class="aim-api-info">
+            <div class="aim-api-info-header">
+                <div class="aim-api-tabs" id="aimApiTabsContainer"></div>
+                <button id="aimManageBtn" class="aim-manage-btn" onclick="aimShowManagePanel()">⚙ 管理配置</button>
+            </div>
+            <div class="aim-row">
+                <label>API URL：</label>
+                <input type="text" id="aimApiUrl" placeholder="https://api.openai.com/v1">
+            </div>
+            <div class="aim-row">
+                <label>API Key：</label>
+                <input type="text" id="aimApiKey" placeholder="sk-xxx">
+                <button id="aimFetchBtn" class="aim-fetch-btn">查询模型</button>
+            </div>
+        </div>
+
+        <!-- 管理配置面板（默认隐藏） -->
+        <div class="aim-manage-panel" id="aimManagePanel" style="display:none;">
+            <div class="aim-manage-header">
+                <h3>API 配置管理</h3>
+                <button class="aim-manage-close" onclick="aimHideManagePanel()">×</button>
+            </div>
+            <div class="aim-manage-list" id="aimManageList"></div>
+            <div class="aim-manage-add">
+                <input type="text" id="aimNewName" placeholder="配置名称，如：API 5">
+                <input type="text" id="aimNewUrl" placeholder="API URL，如：https://api.example.com/v1">
+                <input type="text" id="aimNewKey" placeholder="API Key，如：sk-xxx">
+                <button class="aim-add-btn" onclick="aimAddConfig()">+ 新增配置</button>
+            </div>
+        </div>
+
+        <!-- 结果区：分组Tab + 模型网格 -->
+        <div class="aim-section-title">模型分类</div>
+        <div class="aim-tabs" id="aimTabs"></div>
+        <div class="aim-stats" id="aimStats"></div>
+        <div id="aimContent">
+            <div class="aim-loading aim-placeholder">请点击「查询模型」获取可用模型列表</div>
+        </div>
+        <div class="aim-toast" id="aimToast"></div>
+    </div>
+
+    <!-- ==================== AI 对话导航页面 ==================== -->
+    <div class="page-container" id="pageAiChat" style="display:none;">
+        <div class="ai-page-header">
+            <h2>AI 对话中心</h2>
+            <a href="#" onclick="switchPage('config')">← 返回配置页</a>
+        </div>
+        <h2 class="chat-section-title">国产 AI 平台</h2>
+        <div class="ai-grid" id="aiDomesticGrid"></div>
+        <h2 class="chat-section-title">国外 AI 平台</h2>
+        <div class="ai-grid" id="aiForeignGrid"></div>
+    </div>
+
+    <script src="./scripts/app.js"></script>
+</body>
+</html>
