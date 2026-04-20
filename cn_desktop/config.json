@@ -2,6 +2,72 @@
   "configList": [
     {
       "enable": false,
+      "pName": "组件库",
+      "projectName": "组件库-core-v3（10.7.6.101000分支）",
+      "gitUrl": "http://192.168.182.252/Domain/webdir_v3/webcomponents-core-v3.git",
+      "branch": "10.7.6.101000",
+      "savePath": "D:\\桌面\\中地\\代码\\组件库\\10.7.6.101000",
+      "codePath": "\\webcomponents-core-v3\\mapgis-gm-webcomponents-core",
+      "testEnvUrl": "",
+      "prodEnvUrl": ""
+    },
+    {
+      "enable": false,
+      "pName": "组件库",
+      "projectName": "组件库-common-v3（10.7.6.101000分支）",
+      "gitUrl": "http://192.168.182.252/Domain/webdir_v3/webcomponents-common-v3.git",
+      "branch": "10.7.6.101000",
+      "savePath": "D:\\桌面\\中地\\代码\\组件库\\10.7.6.101000",
+      "codePath": "\\webcomponents-common-v3\\mapgis-gm-webcomponents-common",
+      "testEnvUrl": "",
+      "prodEnvUrl": ""
+    },
+    {
+      "enable": true,
+      "pName": "组件库",
+      "projectName": "组件库-base-v3（10.7.6.101000分支）",
+      "gitUrl": "http://192.168.182.252/Domain/webdir_v3/webcomponents-base-v3.git",
+      "branch": "10.7.6.101000",
+      "savePath": "D:\\桌面\\中地\\代码\\组件库\\10.7.6.101000",
+      "codePath": "\\webcomponents-base-v3\\mapgis-gm-webcomponents-base",
+      "testEnvUrl": "",
+      "prodEnvUrl": ""
+    },
+    {
+      "enable": false,
+      "pName": "组件库",
+      "projectName": "组件库-core-v3（develop分支）",
+      "gitUrl": "http://192.168.182.252/Domain/webdir_v3/webcomponents-core-v3.git",
+      "branch": "develop",
+      "savePath": "D:\\桌面\\中地\\代码\\组件库",
+      "codePath": "\\webcomponents-core-v3\\mapgis-gm-webcomponents-core",
+      "testEnvUrl": "",
+      "prodEnvUrl": ""
+    },
+    {
+      "enable": false,
+      "pName": "组件库",
+      "projectName": "组件库-common-v3（develop分支）",
+      "gitUrl": "http://192.168.182.252/Domain/webdir_v3/webcomponents-common-v3.git",
+      "branch": "develop",
+      "savePath": "D:\\桌面\\中地\\代码\\组件库",
+      "codePath": "\\webcomponents-common-v3\\mapgis-gm-webcomponents-common",
+      "testEnvUrl": "",
+      "prodEnvUrl": ""
+    },
+    {
+      "enable": false,
+      "pName": "组件库",
+      "projectName": "组件库-base-v3（develop分支）",
+      "gitUrl": "http://192.168.182.252/Domain/webdir_v3/webcomponents-base-v3.git",
+      "branch": "develop",
+      "savePath": "D:\\桌面\\中地\\代码\\组件库",
+      "codePath": "\\webcomponents-base-v3\\mapgis-gm-webcomponents-base",
+      "testEnvUrl": "",
+      "prodEnvUrl": ""
+    },
+    {
+      "enable": false,
       "pName": "新疆地质院数据管理与展示系统",
       "projectName": "新疆地质院数据管理与展示系统",
       "gitUrl": "http://192.168.182.252/GMProjects/xjdzydataplat/xjdzydataplatportal.git",
@@ -45,7 +111,7 @@
       "prodEnvUrl": ""
     },
     {
-      "enable": true,
+      "enable": false,
       "pName": "山东黄金地勘",
       "projectName": "山东黄金地勘-Web数据管理系统",
       "gitUrl": "http://192.168.182.252/GMProjects/kckcdigitalplat/kckcdigitalplatdms.git",
@@ -272,72 +338,6 @@
       "branch": "master",
       "savePath": "D:\\桌面\\中地\\代码\\泰安市地质信息共享服务平台(三期)",
       "codePath": "\\a\\webapp",
-      "testEnvUrl": "",
-      "prodEnvUrl": ""
-    },
-    {
-      "enable": false,
-      "pName": "组件库",
-      "projectName": "组件库-core-v3（10.7.6.101000分支）",
-      "gitUrl": "http://192.168.182.252/Domain/webdir_v3/webcomponents-core-v3.git",
-      "branch": "10.7.6.101000",
-      "savePath": "D:\\桌面\\中地\\代码\\组件库\\10.7.6.101000",
-      "codePath": "\\webcomponents-core-v3\\mapgis-gm-webcomponents-core",
-      "testEnvUrl": "",
-      "prodEnvUrl": ""
-    },
-    {
-      "enable": false,
-      "pName": "组件库",
-      "projectName": "组件库-common-v3（10.7.6.101000分支）",
-      "gitUrl": "http://192.168.182.252/Domain/webdir_v3/webcomponents-common-v3.git",
-      "branch": "10.7.6.101000",
-      "savePath": "D:\\桌面\\中地\\代码\\组件库\\10.7.6.101000",
-      "codePath": "\\webcomponents-common-v3\\mapgis-gm-webcomponents-common",
-      "testEnvUrl": "",
-      "prodEnvUrl": ""
-    },
-    {
-      "enable": false,
-      "pName": "组件库",
-      "projectName": "组件库-base-v3（10.7.6.101000分支）",
-      "gitUrl": "http://192.168.182.252/Domain/webdir_v3/webcomponents-base-v3.git",
-      "branch": "10.7.6.101000",
-      "savePath": "D:\\桌面\\中地\\代码\\组件库\\10.7.6.101000",
-      "codePath": "\\webcomponents-base-v3\\mapgis-gm-webcomponents-base",
-      "testEnvUrl": "",
-      "prodEnvUrl": ""
-    },
-    {
-      "enable": false,
-      "pName": "组件库",
-      "projectName": "组件库-core-v3（develop分支）",
-      "gitUrl": "http://192.168.182.252/Domain/webdir_v3/webcomponents-core-v3.git",
-      "branch": "develop",
-      "savePath": "D:\\桌面\\中地\\代码\\组件库",
-      "codePath": "\\webcomponents-core-v3\\mapgis-gm-webcomponents-core",
-      "testEnvUrl": "",
-      "prodEnvUrl": ""
-    },
-    {
-      "enable": false,
-      "pName": "组件库",
-      "projectName": "组件库-common-v3（develop分支）",
-      "gitUrl": "http://192.168.182.252/Domain/webdir_v3/webcomponents-common-v3.git",
-      "branch": "develop",
-      "savePath": "D:\\桌面\\中地\\代码\\组件库",
-      "codePath": "\\webcomponents-common-v3\\mapgis-gm-webcomponents-common",
-      "testEnvUrl": "",
-      "prodEnvUrl": ""
-    },
-    {
-      "enable": false,
-      "pName": "组件库",
-      "projectName": "组件库-base-v3（develop分支）",
-      "gitUrl": "http://192.168.182.252/Domain/webdir_v3/webcomponents-base-v3.git",
-      "branch": "develop",
-      "savePath": "D:\\桌面\\中地\\代码\\组件库",
-      "codePath": "\\webcomponents-base-v3\\mapgis-gm-webcomponents-base",
       "testEnvUrl": "",
       "prodEnvUrl": ""
     },

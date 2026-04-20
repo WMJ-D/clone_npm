@@ -57,7 +57,7 @@ function createWindow() {
   });
 
   // 打开开发者工具（调试用）
-  // mainWindow.webContents.openDevTools();
+  mainWindow.webContents.openDevTools();
 }
 
 // 加载配置
@@ -298,7 +298,7 @@ ipcMain.handle('npm-install', async (event, { targetPath }) => {
       ? `cd "${targetPath}" && start cmd /k npm i`
       : `cd "${targetPath}" && npm i &`;
 
-    await execPromise(command);
+    await execPromise(command, { timeout: 0 });
     mainWindow?.webContents.send('command-output', { type: 'log', data: `[npm] 已启动安装: ${targetPath}\n` });
     return { success: true };
   } catch (e) {
@@ -322,7 +322,7 @@ ipcMain.handle('npm-run-dev', async (event, { targetPath }) => {
       ? `cd "${targetPath}" && start cmd /k npm run dev`
       : `cd "${targetPath}" && npm run dev &`;
 
-    await execPromise(command);
+    await execPromise(command, { timeout: 0 });
     mainWindow?.webContents.send('command-output', { type: 'log', data: `[dev] 已后台启动: ${targetPath}\n` });
     return { success: true };
   } catch (e) {

@@ -121,6 +121,7 @@ body[data-theme="dark"] {
 .terminal-panel {
     width: 480px;
     min-width: 360px;
+    height:calc(100vh - 20px);
     background: #1e1e2e;
     color: #cdd6f4;
     display: flex;
@@ -645,7 +646,7 @@ body[data-theme="dark"] {
 
 /* ==================== 响应式 ==================== */
 @media (max-width: 1200px) {
-    .terminal-panel { width: 380px; min-width: 320px; }
+    .terminal-panel { width: 380px; min-width: 320px; height:calc(100vh - 20px);}
     .function-buttons { max-width: 98%; }
 }
 @media (max-width: 800px) {
