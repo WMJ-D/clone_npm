@@ -31,7 +31,8 @@ function showMsg(text, isSuccess = true) {
 }
 
 function logToTerminal(text, type = 'info') {
-    terminalPanel.style.display = 'block';
+    terminalPanel.classList.remove('hidden');
+    terminalPanel.classList.add('show');
     const el = document.createElement('div');
     el.className = `log-${type}`;
     const time = new Date().toLocaleTimeString();
@@ -49,32 +50,25 @@ function escapeHtml(text) {
 // ==================== 页面切换 ====================
 
 function switchPage(page) {
-    const enabledPanel = document.querySelector('.enabled-items-panel');
-    const functionBar = document.querySelector('.function-buttons');
+    const configPage = document.getElementById('configPage');
+    const terminalPanel = document.getElementById('terminalPanel');
+    // 切换页面时强制隐藏终端面板
+    terminalPanel.classList.remove('show');
+    terminalPanel.classList.add('hidden');
+    
     if (page === 'config') {
-        document.querySelector('.terminal-container').style.display = '';
+        configPage.style.display = '';
         document.getElementById('pageAiModels').style.display = 'none';
         document.getElementById('pageAiChat').style.display = 'none';
-        // 恢复悬浮按钮、已勾选面板、功能按钮栏
-        document.querySelectorAll('.floating-btn, .back-to-top').forEach(b => b.style.display = '');
-        if (enabledPanel) enabledPanel.style.display = '';
-        if (functionBar) functionBar.style.display = '';
     } else if (page === 'ai-models') {
-        document.querySelector('.terminal-container').style.display = 'none';
+        configPage.style.display = 'none';
         document.getElementById('pageAiModels').style.display = 'block';
         document.getElementById('pageAiChat').style.display = 'none';
-        // 隐藏悬浮按钮、已勾选面板、功能按钮栏
-        document.querySelectorAll('.floating-btn, .back-to-top').forEach(b => b.style.display = 'none');
-        if (enabledPanel) enabledPanel.style.display = 'none';
-        if (functionBar) functionBar.style.display = 'none';
         renderAIModelsPage();
     } else if (page === 'ai-chat') {
-        document.querySelector('.terminal-container').style.display = 'none';
+        configPage.style.display = 'none';
         document.getElementById('pageAiModels').style.display = 'none';
         document.getElementById('pageAiChat').style.display = 'block';
-        document.querySelectorAll('.floating-btn, .back-to-top').forEach(b => b.style.display = 'none');
-        if (enabledPanel) enabledPanel.style.display = 'none';
-        if (functionBar) functionBar.style.display = 'none';
         renderAIChatGrid();
     }
 }
@@ -159,6 +153,7 @@ async function saveConfig() {
 
 function updateEnabledItemsPanel() {
     const el = document.getElementById('enabledItemsList');
+    const countEl = document.getElementById('enabledCount');
     const enabledItems = [];
     document.querySelectorAll('.config-item').forEach(item => {
         if (item.querySelector('.enable-checkbox').checked) {
@@ -169,13 +164,15 @@ function updateEnabledItemsPanel() {
         }
     });
 
+    countEl.textContent = enabledItems.length;
+
     if (enabledItems.length === 0) {
-        el.className = 'empty-tip';
-        el.innerHTML = '暂无勾选的执行项';
+        el.className = 'cfg-enabled-list';
+        el.innerHTML = '<div class="cfg-enabled-empty">暂无勾选</div>';
     } else {
-        el.className = '';
+        el.className = 'cfg-enabled-list';
         el.innerHTML = enabledItems.map(item =>
-            `<div class="item" onclick="scrollToItem(${item.itemId})"><span class="name">${escapeHtml(item.projectName)}</span></div>`
+            `<div class="cfg-enabled-item" onclick="scrollToItem(${item.itemId})"><span class="name">${escapeHtml(item.projectName)}</span></div>`
         ).join('');
     }
 }
@@ -194,6 +191,7 @@ function scrollToItem(itemId) {
 
 function updatePNameTabs() {
     const el = document.getElementById('pName-tabs-list');
+    const countEl = document.getElementById('totalProjectCount');
     const pNameMap = new Map();
 
     document.querySelectorAll('.config-item').forEach(item => {
@@ -203,41 +201,65 @@ function updatePNameTabs() {
         pNameMap.get(pName).push(itemId);
     });
 
+    countEl.textContent = document.querySelectorAll('.config-item').length;
+
     if (pNameMap.size === 0) {
-        el.innerHTML = '<div class="empty-tip">暂无项目</div>';
+        el.innerHTML = `<div class="cfg-tab-all active">
+            <span class="cfg-tab-icon">📋</span>
+            <span>全部项目</span>
+        </div>`;
     } else {
-        el.innerHTML = Array.from(pNameMap.entries()).map(([pName, ids]) =>
-            `<div class="pName-tab" data-pName="${pName}" onclick="filterByPName('${pName}')">
-                ${escapeHtml(pName)} <span class="count">(${ids.length})</span>
+        el.innerHTML = `<div class="cfg-tab-all" onclick="showAllProjects()">
+            <span class="cfg-tab-icon">📋</span>
+            <span>全部项目</span>
+        </div>` + Array.from(pNameMap.entries()).map(([pName, ids]) =>
+            `<div class="pName-tab" data-pName="${escapeHtml(pName)}" onclick="filterByPName('${escapeHtml(pName)}')">
+                <span class="cfg-tab-icon">📁</span>
+                <span>${escapeHtml(pName)}</span>
+                <span class="count">${ids.length}</span>
             </div>`
         ).join('');
     }
 }
 
-function filterByPName(targetPName) {
+function showAllProjects() {
     const configListEl = document.getElementById('configList');
+    // 移除全部标签和分组标签的高亮
+    document.querySelectorAll('.cfg-tab-all, .pName-tab').forEach(tab => tab.classList.remove('active'));
+    const allTab = document.querySelector('.cfg-tab-all');
+    if (allTab) allTab.classList.add('active');
+    
+    // 只修改 display 样式，不清空 DOM
+    document.querySelectorAll('.config-item').forEach(item => {
+        item.style.display = '';
+    });
+}
+
+function filterByPName(targetPName) {
     const allItems = Array.from(document.querySelectorAll('.config-item'));
-    const matched = [], unmatched = [];
+    const matched = [];
+
+    // 更新侧边栏高亮
+    document.querySelectorAll('.cfg-tab-all, .pName-tab').forEach(tab => tab.classList.remove('active'));
 
     allItems.forEach(item => {
         const pName = item.querySelector('.pName').value.trim() || '未命名项目';
         if (pName === targetPName) {
             matched.push(item);
+            item.style.display = '';
             item.classList.add('highlight');
             setTimeout(() => item.classList.remove('highlight'), 1500);
         } else {
-            unmatched.push(item);
+            item.style.display = 'none';
         }
     });
 
-    configListEl.innerHTML = '';
-    matched.forEach(item => configListEl.appendChild(item));
-    unmatched.forEach(item => configListEl.appendChild(item));
+    // 高亮当前分组
+    const targetTab = document.querySelector(`.pName-tab[data-pName="${targetPName}"]`);
+    if (targetTab) targetTab.classList.add('active');
 
-    // 先滚到顶部，再定位到第一个匹配项
-    configListEl.scrollTo({ top: 0 });
+    // 滚动到第一个匹配项
     if (matched.length > 0) matched[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
-    saveConfig();
 }
 
 // ==================== 创建配置项 DOM ====================
@@ -249,55 +271,50 @@ function createConfigItem(data = {}) {
     item.className = 'config-item';
     item.dataset.index = itemId + 1;
     item.innerHTML = `
-        <div class="row">
-            <label>项目名称：</label>
-            <input type="text" class="pName" value="${data.pName || ''}" placeholder="必填：如 山东省黄金地勘">
+        <div class="item-header">
+            <div class="item-index">${itemId + 1}</div>
+            <div class="item-title">
+                <input type="text" class="pName" value="${escapeHtml(data.pName || '')}" placeholder="项目名称：如 山东省黄金地勘">
+                <input type="text" class="projectName" value="${escapeHtml(data.projectName || '')}" placeholder="系统名称：如 鹰眼智展大屏">
+            </div>
+            <input type="checkbox" class="enable-checkbox" ${data.enable ? 'checked' : ''} title="勾选后执行命令">
         </div>
         <div class="row">
-            <label>系统名称：</label>
-            <input type="text" class="projectName" value="${data.projectName || ''}" placeholder="必填：如 鹰眼智展大屏">
+            <label>Git 地址</label>
+            <input type="text" class="gitUrl" value="${escapeHtml(data.gitUrl || '')}" placeholder="http://xxx.git">
+            <button class="btn-open gitUrl-open">打开</button>
         </div>
         <div class="row">
-            <label>是否执行：</label>
-            <input type="checkbox" class="enable-checkbox" ${data.enable ? 'checked' : ''}>
-            <span style="color:#666;font-size:12px;">勾选后命令会执行该配置</span>
+            <label>分支</label>
+            <input type="text" class="branch" value="${escapeHtml(data.branch || 'master')}" placeholder="默认：master">
         </div>
         <div class="row">
-            <label>Gitlab地址：</label>
-            <input type="text" class="gitUrl" value="${data.gitUrl || ''}" placeholder="必填：http://xxx.git">
-            <button class="btn-select gitUrl-open" style="margin-left:5px;">打开</button>
+            <label>保存路径</label>
+            <input type="text" class="savePath" value="${escapeHtml(data.savePath || '')}" placeholder="D:\\Projects\\xxx">
         </div>
         <div class="row">
-            <label>分支：</label>
-            <input type="text" class="branch" value="${data.branch || 'master'}" placeholder="默认：master">
+            <label>代码子路径</label>
+            <input type="text" class="codePath" value="${escapeHtml(data.codePath || '')}" placeholder="\\项目名\\webapp">
         </div>
         <div class="row">
-            <label>保存路径：</label>
-            <input type="text" class="savePath" value="${data.savePath || ''}" placeholder="必填：D:\\Projects\\xxx">
+            <label>测试环境</label>
+            <input type="text" class="testEnvUrl" value="${escapeHtml(data.testEnvUrl || '')}" placeholder="http://测试环境">
+            <button class="btn-open testEnvUrl-open">打开</button>
         </div>
         <div class="row">
-            <label>代码子路径：</label>
-            <input type="text" class="codePath" value="${data.codePath || ''}" placeholder="可选：\\项目名\\webapp">
+            <label>正式环境</label>
+            <input type="text" class="prodEnvUrl" value="${escapeHtml(data.prodEnvUrl || '')}" placeholder="http://正式环境">
+            <button class="btn-open prodEnvUrl-open">打开</button>
         </div>
-        <div class="row">
-            <label>测试环境地址：</label>
-            <input type="text" class="testEnvUrl" value="${data.testEnvUrl || ''}" placeholder="可选：http://测试环境">
-            <button class="btn-select testEnvUrl-open" style="margin-left:5px;">打开</button>
-        </div>
-        <div class="row">
-            <label>正式环境地址：</label>
-            <input type="text" class="prodEnvUrl" value="${data.prodEnvUrl || ''}" placeholder="可选：http://正式环境">
-            <button class="btn-select prodEnvUrl-open" style="margin-left:5px;">打开</button>
-        </div>
-        <div class="row item-action-bar">
+        <div class="item-action-bar">
             <button class="action-btn action-1" data-flag="1" title="git clone + 切换分支 + IDE打开">Clone</button>
             <button class="action-btn action-2" data-flag="2" title="清除依赖 + npm install">重装</button>
             <button class="action-btn action-3" data-flag="3" title="用 IDE 打开项目">打开</button>
             <button class="action-btn action-4" data-flag="4" title="拉取代码 + npm run dev">启动</button>
-            <button class="action-btn action-5" data-flag="5" title="Clone + 重装（全部操作）">全部</button>
+            <button class="action-btn action-5" data-flag="5" title="Clone + 重装">全部</button>
         </div>
-        <div class="row">
-            <button class="btn-danger delete-btn">删除</button>
+        <div class="item-footer">
+            <button class="btn-delete delete-btn">删除</button>
         </div>
     `;
 
@@ -316,9 +333,10 @@ function createConfigItem(data = {}) {
             const flag = parseInt(btn.dataset.flag);
             if (isExecuting) { showMsg('已有命令正在执行，请等待完成！', false); return; }
             isExecuting = true;
-            document.querySelectorAll('.function-btn, .action-btn').forEach(b => b.disabled = true);
+            document.querySelectorAll('.cfg-action-btn, .action-btn').forEach(b => b.disabled = true);
             
             const projectData = getProjectData(item);
+            terminalPanel.classList.add('show');
             try {
                 terminalLog.innerHTML = '';
                 logToTerminal(`[单项] 开始执行命令 [${flag}] - ${projectData.projectName || projectData.pName}`, 'info');
@@ -328,7 +346,7 @@ function createConfigItem(data = {}) {
                 logToTerminal(`[单项] 执行失败：${e.message}`, 'error');
             } finally {
                 isExecuting = false;
-                document.querySelectorAll('.function-btn, .action-btn').forEach(b => b.disabled = false);
+                document.querySelectorAll('.cfg-action-btn, .action-btn').forEach(b => b.disabled = false);
             }
         });
     });
@@ -455,11 +473,10 @@ async function executeCommandForItem(flag, project) {
 function createEditPathItem(path = '') {
     const item = document.createElement('div');
     item.className = 'edit-path-item';
-    item.style.cssText = 'display:flex;align-items:center;margin-bottom:10px;padding:8px;border:1px solid #eee;border-radius:4px;';
     item.innerHTML = `
-        <input type="text" class="edit-path-input" value="${path}" placeholder="编辑器路径" style="flex:1;margin-right:10px;padding:5px;">
-        <button class="btn-select edit-path-select" style="margin-right:5px;">选择</button>
-        <button class="btn-danger edit-path-delete" style="padding:5px 10px;">删除</button>
+        <input type="text" class="edit-path-input" value="${escapeHtml(path)}" placeholder="编辑器路径">
+        <button class="edit-path-select">选择</button>
+        <button class="edit-path-delete">删除</button>
     `;
 
     const inputEl = item.querySelector('.edit-path-input');
@@ -516,7 +533,7 @@ async function executeCommand(flag) {
     }
 
     isExecuting = true;
-    document.querySelectorAll('.function-btn').forEach(btn => btn.disabled = true);
+    document.querySelectorAll('.cfg-action-btn').forEach(btn => btn.disabled = true);
 
     terminalLog.innerHTML = '';
     logToTerminal(`开始执行命令 [${flag}]，共 ${enabledItems.length} 个已启用项目...`, 'info');
@@ -651,7 +668,7 @@ async function executeCommand(flag) {
         showMsg(`执行失败：${e.message}`, false);
     } finally {
         isExecuting = false;
-        document.querySelectorAll('.function-btn').forEach(btn => btn.disabled = false);
+        document.querySelectorAll('.cfg-action-btn').forEach(btn => btn.disabled = false);
     }
 }
 
@@ -899,23 +916,8 @@ function aimCopyText(text, cardEl) {
     });
 }
 
-// ==================== 主题切换 ====================
+// ==================== AI 模型分组 ====================
 
-function initTheme() {
-    const saved = localStorage.getItem('theme') || 'light';
-    document.body.setAttribute('data-theme', saved);
-    const btn = document.getElementById('themeToggle');
-    btn.textContent = saved === 'dark' ? '☀️' : '🌙';
-}
-
-function toggleTheme() {
-    const current = document.body.getAttribute('data-theme') || 'light';
-    const next = current === 'light' ? 'dark' : 'light';
-    document.body.setAttribute('data-theme', next);
-    localStorage.setItem('theme', next);
-    const btn = document.getElementById('themeToggle');
-    btn.textContent = next === 'dark' ? '☀️' : '🌙';
-}
 function aimGetGroup(modelId) {
     return modelId.split('-')[0] || '其他';
 }
@@ -1011,7 +1013,8 @@ backToTopBtn.addEventListener('click', () => configListEl.scrollTo({ top: 0, beh
 function bindEvents() {
     // 终端控制
     document.getElementById('closeTerminalBtn').addEventListener('click', () => {
-        terminalPanel.style.display = 'none';
+        terminalPanel.classList.remove('show');
+        terminalPanel.classList.add('hidden');
     });
     document.getElementById('clearTerminalBtn2').addEventListener('click', () => {
         terminalLog.innerHTML = '';
@@ -1024,7 +1027,9 @@ function bindEvents() {
         document.getElementById('configList').appendChild(ni);
         updateEnabledItemsPanel();
         updatePNameTabs();
-        ni.scrollIntoView({ behavior: 'smooth' });
+        // 确保新增项目可见（取消任何过滤状态）
+        showAllProjects();
+        ni.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
     document.getElementById('saveAll').addEventListener('click', saveConfig);
     document.getElementById('refresh').addEventListener('click', loadConfig);
@@ -1035,14 +1040,31 @@ function bindEvents() {
     });
 
     // 功能按钮 1-5
-    document.getElementById('btn-1').addEventListener('click', () => executeCommand(1));
-    document.getElementById('btn-2').addEventListener('click', () => executeCommand(2));
-    document.getElementById('btn-3').addEventListener('click', () => executeCommand(3));
-    document.getElementById('btn-4').addEventListener('click', () => executeCommand(4));
-    document.getElementById('btn-5').addEventListener('click', () => executeCommand(5));
-
-    // 主题切换
-    document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+    document.getElementById('btn-1').addEventListener('click', () => {
+        terminalPanel.classList.remove('hidden');
+        terminalPanel.classList.add('show');
+        executeCommand(1);
+    });
+    document.getElementById('btn-2').addEventListener('click', () => {
+        terminalPanel.classList.remove('hidden');
+        terminalPanel.classList.add('show');
+        executeCommand(2);
+    });
+    document.getElementById('btn-3').addEventListener('click', () => {
+        terminalPanel.classList.remove('hidden');
+        terminalPanel.classList.add('show');
+        executeCommand(3);
+    });
+    document.getElementById('btn-4').addEventListener('click', () => {
+        terminalPanel.classList.remove('hidden');
+        terminalPanel.classList.add('show');
+        executeCommand(4);
+    });
+    document.getElementById('btn-5').addEventListener('click', () => {
+        terminalPanel.classList.remove('hidden');
+        terminalPanel.classList.add('show');
+        executeCommand(5);
+    });
 
     // IDE 选择变化
     document.getElementById('codingEditPath').addEventListener('change', async (e) => {
@@ -1055,9 +1077,6 @@ function bindEvents() {
 
 async function init() {
     bindEvents();
-
-    // 主题初始化
-    initTheme();
     
     await loadConfig();
 

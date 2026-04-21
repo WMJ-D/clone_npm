@@ -6,89 +6,137 @@
     <link rel="stylesheet" href="./styles/main.css">
 </head>
 <body>
-    <!-- 主题切换按钮 -->
-    <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
 
-    <!-- 提示消息 -->
     <div class="msg" id="msg"></div>
 
-    <!-- 右上角已勾选执行项的悬浮面板 -->
-    <div class="enabled-items-panel">
-        <div class="title">已勾选执行的项目</div>
-        <div id="enabledItemsList" class="empty-tip">暂无勾选的执行项</div>
-    </div>
-
-    <div class="terminal-container">
-        <!-- 终端输出面板 -->
-        <div class="terminal-panel" id="terminalPanel">
-            <div class="terminal-header">
-                <span>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="4 17 10 11 4 5"></polyline>
-                        <line x1="12" y1="19" x2="20" y2="19"></line>
-                    </svg>
-                    命令执行日志
-                </span>
-                <span>
-                    <button class="clear-btn" id="closeTerminalBtn">关闭</button>
-                    <button class="clear-btn" id="clearTerminalBtn2">清空</button>
-                </span>
+    <!-- ==================== 配置主页（全新布局） ==================== -->
+    <div class="config-page" id="configPage">
+        <!-- 顶部导航 -->
+        <div class="cfg-header">
+            <div class="cfg-header-left">
+                <h1 class="cfg-title">Clone-NPM</h1>
+                <span class="cfg-subtitle">项目配置管理中心</span>
             </div>
-            <div class="log" id="terminalLog"></div>
-        </div>
-        <div class="container" id="mainContainer">
-            <div class="header">
-                <h2>Clone-NPM 配置管理</h2>
-                <div class="header-links">
-                    <a href="#" onclick="switchPage('ai-models')">AIModelIDs</a>
-                    <a href="#" onclick="switchPage('ai-chat')">AI对话合集</a>
-                </div>
-            </div>
-
-            <!-- 编辑器路径配置 -->
-            <div class="editor-path">
-                <label>项目运行IDE：</label>
-                <select id="codingEditPath" style="padding: 5px; margin-right: 10px;">
-                    <option value="">请选择编辑器路径</option>
-                </select>
-            </div>
-
-            <!-- 编辑器路径列表 -->
-            <div class="editor-path-list">
-                <div>
-                    <label>编辑器路径选项：</label>
-                    <button class="btn-primary" id="addEditPath">新增</button>
-                </div>
-                <div id="editPathList"></div>
-            </div>
-
-            <div class="main-content">
-                <!-- 项目名称标题tab（左侧分组树） -->
-                <div class="pName-tabs">
-                    <div id="pName-tabs-list"></div>
-                </div>
-                <!-- 配置项列表 -->
-                <div id="configList" class="config-list"></div>
+            <div class="cfg-header-actions">
+                <button class="cfg-btn-secondary" id="addItem">
+                    <span class="cfg-btn-icon">+</span> 新增项目
+                </button>
+                <button class="cfg-btn-secondary" id="saveAll">
+                    <span class="cfg-btn-icon">💾</span> 保存配置
+                </button>
+                <button class="cfg-btn-secondary" id="refresh">
+                    <span class="cfg-btn-icon">🔄</span> 刷新
+                </button>
+                <a href="#" class="cfg-nav-link" onclick="switchPage('ai-models')">
+                    <span class="cfg-nav-icon">🤖</span> AI模型
+                </a>
+                <a href="#" class="cfg-nav-link" onclick="switchPage('ai-chat')">
+                    <span class="cfg-nav-icon">💬</span> AI对话
+                </a>
             </div>
         </div>
-    </div>
 
-    <!-- 右侧悬浮按钮 -->
-    <button class="floating-btn btn-primary" id="addItem">新增配置</button>
-    <button class="floating-btn btn-primary" id="saveAll">保存配置</button>
-    <button class="floating-btn btn-primary" id="refresh">刷新配置</button>
+        <!-- IDE 配置区 -->
+        <div class="cfg-ide-panel">
+            <div class="cfg-ide-header">
+                <span class="cfg-ide-title">
+                    <span class="cfg-ide-icon">⚙️</span>
+                    IDE 配置
+                </span>
+                <button class="cfg-btn-add-path" id="addEditPath">+ 添加编辑器</button>
+            </div>
+            <div class="cfg-ide-body">
+                <div class="cfg-ide-select">
+                    <label>当前 IDE：</label>
+                    <select id="codingEditPath">
+                        <option value="">请选择编辑器路径</option>
+                    </select>
+                </div>
+                <div id="editPathList" class="cfg-path-list"></div>
+            </div>
+        </div>
+
+        <!-- 主体内容区 -->
+        <div class="cfg-main">
+            <!-- 左侧分组导航 -->
+            <div class="cfg-sidebar">
+                <div class="cfg-sidebar-header">
+                    <span>📁 项目分组</span>
+                    <span class="cfg-project-count" id="totalProjectCount">0</span>
+                </div>
+                <div class="cfg-sidebar-tabs" id="pName-tabs-list">
+                    <div class="cfg-tab-all active" onclick="showAllProjects()">
+                        <span class="cfg-tab-icon">📋</span>
+                        <span>全部项目</span>
+                    </div>
+                </div>
+                <!-- 已勾选执行项 -->
+                <div class="cfg-enabled-section">
+                    <div class="cfg-enabled-header">
+                        <span>✅ 已勾选执行</span>
+                        <span class="cfg-enabled-count" id="enabledCount">0</span>
+                    </div>
+                    <div id="enabledItemsList" class="cfg-enabled-list">
+                        <div class="cfg-enabled-empty">暂无勾选</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧配置列表 -->
+            <div class="cfg-content">
+                <!-- 功能按钮栏 -->
+                <div class="cfg-action-bar">
+                    <button class="cfg-action-btn action-1" id="btn-1">
+                        <span class="cfg-action-icon">📥</span>
+                        <span class="cfg-action-text">Clone + 分支 + IDE</span>
+                    </button>
+                    <button class="cfg-action-btn action-2" id="btn-2">
+                        <span class="cfg-action-icon">🗑️</span>
+                        <span class="cfg-action-text">清除 + 重装</span>
+                    </button>
+                    <button class="cfg-action-btn action-3" id="btn-3">
+                        <span class="cfg-action-icon">💻</span>
+                        <span class="cfg-action-text">IDE 打开</span>
+                    </button>
+                    <button class="cfg-action-btn action-4" id="btn-4">
+                        <span class="cfg-action-icon">🚀</span>
+                        <span class="cfg-action-text">拉取 + 启动</span>
+                    </button>
+                    <button class="cfg-action-btn action-5" id="btn-5">
+                        <span class="cfg-action-icon">⚡</span>
+                        <span class="cfg-action-text">一键完成</span>
+                    </button>
+                </div>
+
+                <!-- 终端面板和配置列表容器 -->
+                <div class="cfg-list-container">
+                    <!-- 配置项列表 -->
+                    <div id="configList" class="cfg-config-list"></div>
+
+                    <!-- 终端面板 -->
+                    <div class="terminal-panel" id="terminalPanel">
+                        <div class="terminal-header">
+                            <span>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="4 17 10 11 4 5"></polyline>
+                                    <line x1="12" y1="19" x2="20" y2="19"></line>
+                                </svg>
+                                命令执行日志
+                            </span>
+                            <span>
+                                <button class="clear-btn" id="closeTerminalBtn">关闭</button>
+                                <button class="clear-btn" id="clearTerminalBtn2">清空</button>
+                            </span>
+                        </div>
+                        <div class="log" id="terminalLog"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- 回到顶部按钮 -->
     <button class="back-to-top" id="backToTop">↑</button>
-
-    <!-- 功能按钮悬浮栏 (1-5) -->
-    <div class="function-buttons">
-        <button class="function-btn" id="btn-1">1. git clone + 切换分支 + 编辑器打开项目</button>
-        <button class="function-btn" id="btn-2">2. 清除node_modules + npm i 依赖</button>
-        <button class="function-btn" id="btn-3">3. 编辑器打开项目</button>
-        <button class="function-btn" id="btn-4">4. 拉取代码 + npm run dev</button>
-        <button class="function-btn" id="btn-5">5. 按钮一和按钮二</button>
-    </div>
 
     <!-- ==================== AI 模型查询页面 ==================== -->
     <!-- ==================== AI Model IDs 查询页面 ==================== -->

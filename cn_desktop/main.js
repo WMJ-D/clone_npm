@@ -56,8 +56,10 @@ function createWindow() {
     mainWindow = null;
   });
 
-  // 打开开发者工具（调试用）
-  mainWindow.webContents.openDevTools();
+  // 本地开发时打开开发者工具，打包后不打开
+  if (!app.isPackaged) {
+    mainWindow.webContents.openDevTools();
+  }
 }
 
 // 加载配置
@@ -285,7 +287,7 @@ ipcMain.handle('git-switch-branch', async (event, { targetPath, branch }) => {
 
 /**
  * npm install（打开 cmd 窗口执行，不阻塞主进程）
- * Windows: start cmd /k 保持窗口打开查看进度
+ * Windows: start cmd /c 命令执行完后窗口自动关闭
  */
 ipcMain.handle('npm-install', async (event, { targetPath }) => {
   try {
@@ -294,12 +296,13 @@ ipcMain.handle('npm-install', async (event, { targetPath }) => {
     }
 
     const isWin = process.platform === 'win32';
+    // 使用 /c 替代 /k：命令执行完后窗口自动关闭，execPromise 不再无限等待
     const command = isWin
-      ? `cd "${targetPath}" && start cmd /k npm i`
+      ? `start cmd /c cd /d "${targetPath}" && npm i`
       : `cd "${targetPath}" && npm i &`;
 
-    await execPromise(command, { timeout: 0 });
-    mainWindow?.webContents.send('command-output', { type: 'log', data: `[npm] 已启动安装: ${targetPath}\n` });
+    await execPromise(command, { timeout: 20000 });
+    mainWindow?.webContents.send('command-output', { type: 'log', data: `[npm] 已启动安装，请在终端查看: ${targetPath}\n` });
     return { success: true };
   } catch (e) {
     return { success: false, error: e.message };
@@ -308,7 +311,7 @@ ipcMain.handle('npm-install', async (event, { targetPath }) => {
 
 /**
  * npm run dev（后台启动，不阻塞）
- * 对齐原代码：Windows 用 start cmd /k，Mac/Linux 用 &
+ * Windows: start cmd /c 命令执行完后窗口自动关闭（dev 服务器会一直运行直到被停止）
  */
 ipcMain.handle('npm-run-dev', async (event, { targetPath }) => {
   try {
@@ -316,13 +319,13 @@ ipcMain.handle('npm-run-dev', async (event, { targetPath }) => {
       return { success: false, error: 'package.json 不存在' };
     }
 
-    // Windows：后台启动（start cmd /k 保持窗口打开查看日志）
+    // Windows：使用 /c 让命令在独立窗口运行，窗口会在进程结束时自动关闭
     const isWin = process.platform === 'win32';
     const command = isWin
-      ? `cd "${targetPath}" && start cmd /k npm run dev`
+      ? `start cmd /c cd /d "${targetPath}" && npm run dev`
       : `cd "${targetPath}" && npm run dev &`;
 
-    await execPromise(command, { timeout: 0 });
+    await execPromise(command, { timeout: 10000 });
     mainWindow?.webContents.send('command-output', { type: 'log', data: `[dev] 已后台启动: ${targetPath}\n` });
     return { success: true };
   } catch (e) {
@@ -346,39 +349,76 @@ ipcMain.handle('clear-node-modules', async (event, { targetPath }) => {
     const nodeModulesPath = path.join(targetPath, 'node_modules');
     const packageLockPath = path.join(targetPath, 'package-lock.json');
 
-    // 先杀掉目标目录下的 node 进程（避免 npm run dev 占用导致删除失败）
+    // 先杀掉 node 进程（避免占用导致删除失败）
     if (process.platform === 'win32') {
       try {
-        mainWindow?.webContents.send('command-output', { type: 'log', data: `正在停止 ${targetPath} 下的 node 进程...\n` });
-        // 用 taskkill 杀掉在该目录下运行的 node 进程
-        await execPromise(`for /f "tokens=2" %a in ('wmic process where "name='node.exe'" get ProcessId 2^>nul ^| findstr /r "[0-9]"') do taskkill /PID %a /F >nul 2>&1`, { timeout: 10000 });
+        mainWindow?.webContents.send('command-output', { type: 'log', data: `正在停止 node 进程...\n` });
+        // 杀掉所有 node.exe 进程
+        await execPromise(`taskkill /F /IM node.exe 2>nul`, { timeout: 5000 });
+        await sleep(2000); // 等待进程释放文件句柄
         mainWindow?.webContents.send('command-output', { type: 'log', data: `node 进程已停止\n` });
-        await sleep(1500); // 等待进程释放文件句柄
       } catch (killErr) {
         mainWindow?.webContents.send('command-output', { type: 'log', data: `停止进程时出错（可忽略）: ${killErr.message}\n` });
       }
     }
 
-    // 删除 node_modules
+    // 删除 node_modules（带重试机制）
     if (checkPathExist(nodeModulesPath)) {
-      fs.rmSync(nodeModulesPath, { recursive: true, force: true });
-      mainWindow?.webContents.send('command-output', { type: 'log', data: `已删除 node_modules\n` });
+      mainWindow?.webContents.send('command-output', { type: 'log', data: `正在删除 node_modules...\n` });
+      
+      if (process.platform === 'win32') {
+        // Windows 使用 rmdir /s /q（更可靠）
+        let retry = 3;
+        while (retry > 0) {
+          try {
+            await execPromise(`rmdir /s /q "${nodeModulesPath}"`, { timeout: 60000 });
+            mainWindow?.webContents.send('command-output', { type: 'log', data: `已删除 node_modules\n` });
+            break;
+          } catch (rmErr) {
+            retry--;
+            if (retry === 0) {
+              mainWindow?.webContents.send('command-output', { type: 'log', data: `删除 node_modules 失败，可能有文件被占用，请关闭相关程序后重试\n` });
+              // 尝试强制重命名（绕过部分锁定）
+              try {
+                const renamePath = nodeModulesPath + '.old.' + Date.now();
+                fs.renameSync(nodeModulesPath, renamePath);
+                mainWindow?.webContents.send('command-output', { type: 'log', data: `已将 node_modules 重命名为 ${path.basename(renamePath)}\n` });
+              } catch (renameErr) {
+                return { success: false, error: `删除失败: ${rmErr.message}` };
+              }
+            } else {
+              mainWindow?.webContents.send('command-output', { type: 'log', data: `删除失败，重试中... (${retry})\n` });
+              await sleep(2000);
+            }
+          }
+        }
+      } else {
+        // Mac/Linux
+        fs.rmSync(nodeModulesPath, { recursive: true, force: true });
+        mainWindow?.webContents.send('command-output', { type: 'log', data: `已删除 node_modules\n` });
+      }
     } else {
       mainWindow?.webContents.send('command-output', { type: 'log', data: `node_modules 不存在，跳过\n` });
     }
 
     // 删除 package-lock.json
     if (checkPathExist(packageLockPath)) {
-      fs.unlinkSync(packageLockPath);
-      mainWindow?.webContents.send('command-output', { type: 'log', data: `已删除 package-lock.json\n` });
-    } else {
-      mainWindow?.webContents.send('command-output', { type: 'log', data: `package-lock.json 不存在，跳过\n` });
+      try {
+        fs.unlinkSync(packageLockPath);
+        mainWindow?.webContents.send('command-output', { type: 'log', data: `已删除 package-lock.json\n` });
+      } catch (unlinkErr) {
+        mainWindow?.webContents.send('command-output', { type: 'log', data: `删除 package-lock.json 失败，忽略...\n` });
+      }
     }
 
     // npm cache clean --force（对齐原代码）
     mainWindow?.webContents.send('command-output', { type: 'log', data: `正在清除 npm 缓存...\n` });
-    await execPromise('npm cache clean --force', { cwd: targetPath, timeout: 0 });
-    mainWindow?.webContents.send('command-output', { type: 'log', data: `npm 缓存已清除\n` });
+    try {
+      await execPromise('npm cache clean --force', { cwd: targetPath, timeout: 20000 });
+      mainWindow?.webContents.send('command-output', { type: 'log', data: `npm 缓存已清除\n` });
+    } catch (cacheErr) {
+      mainWindow?.webContents.send('command-output', { type: 'log', data: `npm 缓存清除失败（可忽略）: ${cacheErr.message}\n` });
+    }
 
     return { success: true };
   } catch (e) {
