@@ -27,11 +27,13 @@ const terminalStore = useTerminalStore()
 const terminalContainer = ref(null)
 let terminal = null
 let fitAddon = null
+let lastLogLength = 0
 
 onMounted(async () => {
   await nextTick()
   initTerminal()
   window.addEventListener('resize', handleResize)
+  lastLogLength = terminalStore.logs.length
 })
 
 onUnmounted(() => {
@@ -48,7 +50,30 @@ watch(() => terminalStore.isVisible, async (visible) => {
     setTimeout(() => {
         handleResize()
         terminal?.focus()
-    }, 2000);
+    }, 100)
+  }
+})
+
+// 监听日志变化，写入终端
+watch(() => terminalStore.logs.length, (newLen) => {
+  if (newLen > lastLogLength && terminal) {
+    const newLogs = terminalStore.logs.slice(lastLogLength)
+    newLogs.forEach(log => {
+      const timeStr = `\x1b[90m[${log.time}]\x1b[0m ` // 灰色时间
+      const textStr = log.text.endsWith('\n') ? log.text : log.text + '\n'
+      
+      // 根据类型设置颜色
+      if (log.type === 'success') {
+        terminal.write(`${timeStr}\x1b[32m${textStr}\x1b[0m`) // 绿色
+      } else if (log.type === 'error') {
+        terminal.write(`${timeStr}\x1b[31m${textStr}\x1b[0m`) // 红色
+      } else if (log.type === 'warning') {
+        terminal.write(`${timeStr}\x1b[33m${textStr}\x1b[0m`) // 黄色
+      } else {
+        terminal.write(`${timeStr}${textStr}`)
+      }
+    })
+    lastLogLength = newLen
   }
 })
 
@@ -90,7 +115,7 @@ function initTerminal() {
   // 监听终端退出
   window.electronAPI.onTerminalExit(({ termId, exitCode }) => {
     if (termId === terminalStore.currentTermId) {
-      terminal.writeln(`\r\n[进程已退出，退出码: ${exitCode}]`)
+      terminal.writeln(`\r\n\x1b[90m[进程已退出，退出码: ${exitCode}]\x1b[0m`)
       terminal.write('$ ')
       terminalStore.currentTermId = null
     }
