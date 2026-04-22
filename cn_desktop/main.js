@@ -5,19 +5,33 @@ const { spawn, exec } = require('child_process');
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-// 优先读取应用根目录下的 config.json，其次用户数据目录
+// 优先读取用户数据目录的 config.json（打包后），其次应用目录（开发模式）
 let CONFIG_FILE;
-try {
-  // 开发模式：使用 __dirname 下的 config.json
-  const localConfig = path.join(__dirname, 'config.json');
-  if (fs.existsSync(localConfig)) {
-    CONFIG_FILE = localConfig;
-  } else {
-    // 打包后：使用用户数据目录
-    CONFIG_FILE = path.join(app.getPath('userData'), 'config.json');
+const userDataConfig = path.join(app.getPath('userData'), 'config.json');
+const appDirConfig = path.join(__dirname, 'config.json');
+
+if (fs.existsSync(userDataConfig)) {
+  // 用户数据目录已有配置
+  CONFIG_FILE = userDataConfig;
+} else if (fs.existsSync(appDirConfig)) {
+  // 使用应用目录的配置
+  CONFIG_FILE = appDirConfig;
+  // 打包后首次运行，复制配置到用户数据目录
+  if (app.isPackaged) {
+    try {
+      const configDir = path.dirname(userDataConfig);
+      if (!fs.existsSync(configDir)) {
+        fs.mkdirSync(configDir, { recursive: true });
+      }
+      fs.copyFileSync(appDirConfig, userDataConfig);
+      CONFIG_FILE = userDataConfig;
+    } catch (copyErr) {
+      console.warn('复制配置文件失败，使用应用目录:', copyErr.message);
+    }
   }
-} catch (e) {
-  CONFIG_FILE = path.join(app.getPath('userData'), 'config.json');
+} else {
+  // 都没有就用用户数据目录
+  CONFIG_FILE = userDataConfig;
 }
 
 // 默认配置（兼容原 config.json 结构）
@@ -72,12 +86,18 @@ function loadConfig() {
   } catch (e) {
     console.error('加载配置失败:', e);
   }
+  // 返回默认配置（如果加载失败）
   return { ...DEFAULT_CONFIG };
 }
 
 // 保存配置
 function saveConfig(config) {
   try {
+    const configDir = path.dirname(CONFIG_FILE);
+    // 确保目录存在（打包后目录可能不存在）
+    if (!fs.existsSync(configDir)) {
+      fs.mkdirSync(configDir, { recursive: true });
+    }
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
     return true;
   } catch (e) {

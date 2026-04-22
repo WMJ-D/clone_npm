@@ -1,7 +1,7 @@
 {
   "configList": [
     {
-      "enable": false,
+      "enable": true,
       "pName": "组件库",
       "projectName": "组件库-core-v3（10.7.6.101000分支）",
       "gitUrl": "http://192.168.182.252/Domain/webdir_v3/webcomponents-core-v3.git",
@@ -23,7 +23,7 @@
       "prodEnvUrl": ""
     },
     {
-      "enable": true,
+      "enable": false,
       "pName": "组件库",
       "projectName": "组件库-base-v3（10.7.6.101000分支）",
       "gitUrl": "http://192.168.182.252/Domain/webdir_v3/webcomponents-base-v3.git",
@@ -78,7 +78,7 @@
       "prodEnvUrl": ""
     },
     {
-      "enable": true,
+      "enable": false,
       "pName": "山东黄金地勘",
       "projectName": "山东黄金地勘-多源大数据管理分析系统",
       "gitUrl": "http://192.168.182.252/GMProjects/kckcdigitalplat/kckcdigitalplatonemap.git",
@@ -89,7 +89,7 @@
       "prodEnvUrl": ""
     },
     {
-      "enable": true,
+      "enable": false,
       "pName": "山东黄金地勘",
       "projectName": "山东黄金地勘-鹰眼智展大屏",
       "gitUrl": "http://192.168.182.252/GMProjects/KCKCDigitalPlat/kckcdigitalplatbigscreen.git",
@@ -100,7 +100,7 @@
       "prodEnvUrl": ""
     },
     {
-      "enable": true,
+      "enable": false,
       "pName": "山东黄金地勘",
       "projectName": "山东黄金地勘-野外采集后台管理",
       "gitUrl": "http://192.168.182.252/GMProjects/kckcdigitalplat/kckcdigitalplatgeosurvey.git",
@@ -111,7 +111,7 @@
       "prodEnvUrl": ""
     },
     {
-      "enable": true,
+      "enable": false,
       "pName": "山东黄金地勘",
       "projectName": "山东黄金地勘-Web数据管理系统",
       "gitUrl": "http://192.168.182.252/GMProjects/kckcdigitalplat/kckcdigitalplatdms.git",
