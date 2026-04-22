@@ -28,10 +28,10 @@
                     <span class="cfg-btn-icon">🔄</span> 刷新
                 </button>
                 <a href="#" class="cfg-nav-link" onclick="switchPage('ai-models')">
-                    <span class="cfg-nav-icon">🤖</span> AI模型
+                    <span class="cfg-nav-icon">🤖</span> AI模型API
                 </a>
                 <a href="#" class="cfg-nav-link" onclick="switchPage('ai-chat')">
-                    <span class="cfg-nav-icon">💬</span> AI对话
+                    <span class="cfg-nav-icon">💬</span> AI智能助手
                 </a>
             </div>
         </div>
@@ -138,13 +138,13 @@
     <!-- 回到顶部按钮 -->
     <button class="back-to-top" id="backToTop">↑</button>
 
-    <!-- ==================== AI 模型查询页面 ==================== -->
+    <!-- ==================== AI模型API列表查询页面 ==================== -->
     <!-- ==================== AI Model IDs 查询页面 ==================== -->
     <div class="page-container" id="pageAiModels" style="display:none;">
         <div class="aim-header">
-            <h1 class="aim-title">AI 模型列表</h1>
+            <h1 class="aim-title">AI模型API列表</h1>
             <div class="aim-actions">
-                <a href="#" onclick="switchPage('ai-chat')" class="aim-btn">AI 对话</a>
+                <a href="#" onclick="switchPage('ai-chat')" class="aim-btn">AI 智能助手</a>
                 <a href="#" onclick="switchPage('config')" class="aim-btn">返回配置</a>
             </div>
         </div>
@@ -188,13 +188,36 @@
         <div id="aimContent">
             <div class="aim-loading aim-placeholder">请点击「查询模型」获取可用模型列表</div>
         </div>
+
+        <!-- AI 对话区域 -->
+        <div class="aim-chat-section">
+            <div class="aim-chat-header">
+                <h3>💬 AI 对话</h3>
+                <div class="aim-chat-settings">
+                    <label>模型：</label>
+                    <select id="aimChatModel">
+                        <option value="">请先查询模型</option>
+                    </select>
+                </div>
+            </div>
+            <div class="aim-chat-messages" id="aimChatMessages">
+                <div class="aim-chat-welcome">
+                    <span>输入消息开始对话，支持流式输出</span>
+                </div>
+            </div>
+            <div class="aim-chat-input-area">
+                <textarea id="aimChatInput" placeholder="输入消息... (Shift+Enter 换行，Enter 发送)" rows="1"></textarea>
+                <button id="aimChatSendBtn" onclick="aimChatSend()" disabled>发送</button>
+            </div>
+        </div>
+
         <div class="aim-toast" id="aimToast"></div>
     </div>
 
-    <!-- ==================== AI 对话导航页面 ==================== -->
+    <!-- ====================  AI 智能助手导航页面 ==================== -->
     <div class="page-container" id="pageAiChat" style="display:none;">
         <div class="ai-page-header">
-            <h2>AI 对话中心</h2>
+            <h2>AI 智能助手</h2>
             <a href="#" onclick="switchPage('config')">← 返回配置页</a>
         </div>
         <h2 class="chat-section-title">国产 AI 平台</h2>

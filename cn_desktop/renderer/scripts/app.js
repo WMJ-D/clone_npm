@@ -803,9 +803,30 @@ function renderAimApiTabs() {
             tab.classList.add('active');
             document.getElementById('aimApiUrl').value = aimApiConfigs[idx].url;
             document.getElementById('aimApiKey').value = aimApiConfigs[idx].key;
+            // 更新对话区的模型下拉框
+            aimUpdateChatModelSelect();
             aimFetchModels();
         });
     });
+}
+
+// 更新对话区的模型下拉框
+function aimUpdateChatModelSelect() {
+    const select = document.getElementById('aimChatModel');
+    if (!select) return;
+    
+    const config = aimApiConfigs[aimCurrentIdx];
+    if (config && config.models && config.models.length > 0) {
+        select.innerHTML = '<option value="">请选择模型</option>';
+        config.models.forEach(model => {
+            const option = document.createElement('option');
+            option.value = model.id;
+            option.textContent = model.id;
+            select.appendChild(option);
+        });
+    } else {
+        select.innerHTML = '<option value="">请先查询模型</option>';
+    }
 }
 
 function renderAIModelsPage() {
@@ -818,6 +839,8 @@ function renderAIModelsPage() {
     }
     const fetchBtn = document.getElementById('aimFetchBtn');
     if (fetchBtn) fetchBtn.onclick = () => aimFetchModels();
+    // 初始化 AI 对话
+    initAimChat();
 }
 
 // ==================== 管理配置面板 ====================
@@ -989,7 +1012,15 @@ async function aimFetchModels() {
         const json = await res.json();
         if (json.error) throw new Error(json.error.message || JSON.stringify(json.error));
 
+        // 保存模型到当前配置
         aimAllModels = json.data.map(item => item.id);
+        aimApiConfigs[aimCurrentIdx].models = json.data;
+        saveAimApiConfigs();
+        
+        // 更新模型下拉框
+        aimUpdateChatModelSelect();
+        
+        // 渲染模型列表
         aimGroupedModels = aimGroupModels(aimAllModels);
         aimCurrentTab = '全部';
         aimRenderTabs();
@@ -997,6 +1028,170 @@ async function aimFetchModels() {
     } catch (e) {
         contentEl.innerHTML = `<div class="aim-error">查询失败: ${e.message}</div>`;
     }
+}
+
+// ==================== AI 对话功能 ====================
+
+let aimChatHistory = [];  // 对话历史
+let aimIsStreaming = false;  // 是否正在流式输出
+
+// 初始化 AI 对话
+function initAimChat() {
+    const input = document.getElementById('aimChatInput');
+    const sendBtn = document.getElementById('aimChatSendBtn');
+    
+    if (!input || !sendBtn) return;
+    
+    // 自动调整输入框高度
+    input.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+    });
+    
+    // 更新发送按钮状态
+    input.addEventListener('input', () => {
+        sendBtn.disabled = !input.value.trim() || aimIsStreaming;
+    });
+    
+    // 快捷键
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (input.value.trim() && !aimIsStreaming) {
+                aimChatSend();
+            }
+        }
+    });
+    
+    // 更新模型下拉框
+    aimUpdateChatModelSelect();
+}
+
+// 发送消息
+async function aimChatSend() {
+    const input = document.getElementById('aimChatInput');
+    const sendBtn = document.getElementById('aimChatSendBtn');
+    const modelSelect = document.getElementById('aimChatModel');
+    
+    const message = input.value.trim();
+    if (!message || aimIsStreaming) return;
+    
+    const model = modelSelect.value;
+    if (!model) {
+        aimShowToast('请先选择模型');
+        return;
+    }
+    
+    // 禁用输入
+    input.value = '';
+    input.style.height = 'auto';
+    sendBtn.disabled = true;
+    aimIsStreaming = true;
+    
+    // 添加用户消息
+    aimAddChatMessage('user', message);
+    
+    // 添加助手消息占位
+    const assistantEl = aimAddChatMessage('assistant', '');
+    
+    try {
+        const config = aimApiConfigs[aimCurrentIdx];
+        const apiUrl = config.url.replace(/\/$/, '') + '/chat/completions';
+        
+        // 构建消息历史
+        const messages = aimChatHistory.map(m => ({ role: m.role, content: m.content }));
+        
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${config.key}`
+            },
+            body: JSON.stringify({
+                model: model,
+                messages: messages,
+                stream: true
+            })
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            assistantEl.querySelector('.aim-msg-content').textContent = `请求失败: ${response.status} ${errorText}`;
+            return;
+        }
+        
+        // 处理流式响应
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let fullContent = '';
+        const contentEl = assistantEl.querySelector('.aim-msg-content');
+        
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+            
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    const data = line.slice(6);
+                    if (data === '[DONE]') continue;
+                    
+                    try {
+                        const json = JSON.parse(data);
+                        const content = json.choices?.[0]?.delta?.content || '';
+                        if (content) {
+                            fullContent += content;
+                            contentEl.textContent = fullContent;
+                            // 滚动到底部
+                            const container = document.getElementById('aimChatMessages');
+                            container.scrollTop = container.scrollHeight;
+                        }
+                    } catch (e) {
+                        // 忽略解析错误
+                    }
+                }
+            }
+        }
+        
+        // 保存到历史
+        aimChatHistory.push({ role: 'assistant', content: fullContent });
+        
+    } catch (error) {
+        assistantEl.querySelector('.aim-msg-content').textContent = `错误: ${error.message}`;
+    } finally {
+        aimIsStreaming = false;
+        sendBtn.disabled = false;
+        input.focus();
+    }
+}
+
+// 添加消息到界面
+function aimAddChatMessage(role, content) {
+    const container = document.getElementById('aimChatMessages');
+    
+    // 移除欢迎提示
+    const welcome = container.querySelector('.aim-chat-welcome');
+    if (welcome) welcome.remove();
+    
+    const msgEl = document.createElement('div');
+    msgEl.className = `aim-msg ${role}`;
+    
+    const avatar = role === 'user' ? '👤' : '🤖';
+    
+    msgEl.innerHTML = `
+        <div class="aim-msg-avatar">${avatar}</div>
+        <div class="aim-msg-content">${escapeHtml(content)}</div>
+    `;
+    
+    container.appendChild(msgEl);
+    container.scrollTop = container.scrollHeight;
+    
+    // 保存到历史
+    aimChatHistory.push({ role, content });
+    
+    return msgEl;
 }
 
 // ==================== 回到顶部 & 滚动 ====================
