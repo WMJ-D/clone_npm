@@ -286,10 +286,17 @@ async function handleAction(action) {
   window.__toast('执行完成', 'success')
 }
 
-async function handleSingleAction(action, item) {
-  const fullPath = item.savePath + (item.codePath ? '\\' + item.codePath : '')
-  terminalStore.addLog(`开始处理: ${item.projectName || '未命名'}`, 'info')
+function pathJoin(...parts) { return parts.filter(p => p).join('\\').replace(/[\\/]+/g, '\\'); }
 
+function getProjectName(gitUrl) {
+    const m = gitUrl.match(/\/([^\/]+?)(?:\.git)?$/);
+    return m ? m[1] : null;
+}
+
+async function handleSingleAction(action, item) {
+  const fullPath = item.codePath ? pathJoin(item.savePath, item.codePath) : item.savePath;
+  terminalStore.addLog(`开始处理: ${item.projectName || '未命名'}`, 'info')
+  const repoName = getProjectName(item.gitUrl);
   try {
     if (action === 1) {
       // Clone + 分支 + IDE
@@ -297,52 +304,79 @@ async function handleSingleAction(action, item) {
         terminalStore.addLog(`[${item.projectName}] Git地址或保存路径不完整，跳过`, 'error')
         return
       }
+      terminalStore.show()
       const cloneRes = await window.electronAPI.gitClone(item.gitUrl, item.savePath, item.branch)
       if (!cloneRes.success) {
         terminalStore.addLog(`[${item.projectName}] Clone失败: ${cloneRes.error}`, 'error')
         return
       }
+      terminalStore.setCurrentTerm(cloneRes.termId)
       terminalStore.addLog(`[${item.projectName}] Clone成功: ${cloneRes.targetPath}`, 'success')
 
       if (item.branch && item.branch !== 'master') {
-        await window.electronAPI.gitSwitchBranch(cloneRes.targetPath, item.branch)
+        terminalStore.addLog(`[${item.projectName}] 正在切换分支...`, 'info')
+        await window.electronAPI.gitSwitchBranch(pathJoin(item.savePath, repoName), item.branch)
       }
 
       if (configStore.CodingEditPath) {
-        await window.electronAPI.openWithIDE(fullPath, configStore.CodingEditPath)
+        await window.electronAPI.openWithIDE(item.savePath, configStore.CodingEditPath)
       }
     } else if (action === 2) {
       // 清除 + 重装
+      terminalStore.show()
       const clearRes = await window.electronAPI.clearNodeModules(fullPath)
       if (clearRes.success) {
-        await window.electronAPI.npmInstall(fullPath)
+        terminalStore.setCurrentTerm(clearRes.termId)
+        terminalStore.addLog(`[${item.projectName}] 开始安装依赖...`, 'info')
+        const installRes = await window.electronAPI.npmInstall(fullPath)
+        if (installRes.success) {
+          terminalStore.setCurrentTerm(installRes.termId)
+        }
       } else {
         terminalStore.addLog(`[${item.projectName}] 清除失败: ${clearRes.error}`, 'error')
       }
     } else if (action === 3) {
       // IDE 打开
       if (configStore.CodingEditPath) {
-        await window.electronAPI.openWithIDE(fullPath, configStore.CodingEditPath)
+        await window.electronAPI.openWithIDE(item.savePath, configStore.CodingEditPath)
       } else {
         terminalStore.addLog('请先配置IDE路径', 'warning')
       }
     } else if (action === 4) {
       // 拉取 + 启动
-      await window.electronAPI.gitPull(fullPath)
-      await window.electronAPI.npmRunDev(fullPath)
-      terminalStore.addLog(`[${item.projectName}] 已启动开发服务器`, 'success')
+      const pp4 = pathJoin(item.savePath, repoName)
+      terminalStore.show()
+      terminalStore.addLog(`[${item.projectName}] 正在拉取代码...`, 'info')
+      const pullRes = await window.electronAPI.gitPull(pp4)
+      
+      if (pullRes.success) {
+        terminalStore.setCurrentTerm(pullRes.termId)
+      }
+      
+      // 使用 PTY 终端启动 dev
+      const devRes = await window.electronAPI.npmRunDev(fullPath)
+      if (devRes.success) {
+        terminalStore.setCurrentTerm(devRes.termId)
+        terminalStore.addLog(`[${item.projectName}] 已启动开发服务器`, 'success')
+      } else {
+        terminalStore.addLog(`[${item.projectName}] 启动失败: ${devRes.error}`, 'error')
+      }
     } else if (action === 5) {
       // 一键完成
       if (!item.gitUrl || !item.savePath) return
+      terminalStore.show()
       const cloneRes = await window.electronAPI.gitClone(item.gitUrl, item.savePath, item.branch)
       if (cloneRes.success) {
+        terminalStore.setCurrentTerm(cloneRes.termId)
+        terminalStore.addLog(`[${item.projectName}] 正在切换分支...`, 'info')
         if (item.branch && item.branch !== 'master') {
-          await window.electronAPI.gitSwitchBranch(cloneRes.targetPath, item.branch)
+          await window.electronAPI.gitSwitchBranch(pathJoin(item.savePath, repoName), item.branch)
         }
-        await window.electronAPI.npmInstall(cloneRes.targetPath)
         if (configStore.CodingEditPath) {
-          await window.electronAPI.openWithIDE(fullPath, configStore.CodingEditPath)
+          await window.electronAPI.openWithIDE(item.savePath, configStore.CodingEditPath)
         }
+        terminalStore.addLog(`[${item.projectName}] 开始安装依赖...`, 'info')
+        await window.electronAPI.npmInstall(fullPath)
       }
     }
   } catch (e) {
