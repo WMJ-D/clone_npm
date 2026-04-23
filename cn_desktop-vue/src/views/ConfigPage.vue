@@ -36,7 +36,7 @@
       <div class="cfg-ide-body">
         <div class="cfg-ide-select">
           <label>当前 IDE：</label>
-          <el-select v-model="configStore.CodingEditPath" placeholder="请选择编辑器路径" clearable style="width: 600px">
+          <el-select v-model="configStore.CodingEditPath" placeholder="请选择编辑器路径"  style="width: 300px">
             <el-option v-for="p in configStore.CodingEditPathList" :key="p" :label="p" :value="p" />
           </el-select>
         </div>

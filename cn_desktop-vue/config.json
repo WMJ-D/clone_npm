@@ -1,7 +1,7 @@
 {
   "configList": [
     {
-      "enable": true,
+      "enable": false,
       "pName": "组件库",
       "projectName": "组件库-core-v3（10.7.6.101000分支）",
       "gitUrl": "http://192.168.182.252/Domain/webdir_v3/webcomponents-core-v3.git",
@@ -13,7 +13,7 @@
       "id": "item_1776830741875_0"
     },
     {
-      "enable": true,
+      "enable": false,
       "pName": "组件库",
       "projectName": "组件库-common-v3（10.7.6.101000分支）",
       "gitUrl": "http://192.168.182.252/Domain/webdir_v3/webcomponents-common-v3.git",
