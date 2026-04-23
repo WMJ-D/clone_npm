@@ -24,9 +24,10 @@ function getConfigFile() {
   
   // 开发时: electron/main/ -> 项目根目录
   const devConfig = path.join(__dirname, '../../config.json')
+  console.log("🚀 ~ getConfigFile ~ devConfig:", devConfig)
 
   // 优先级：用户目录 > extraResources(打包) > dev配置(开发)
-  if (fs.existsSync(userDataConfig)) {
+  if (!isDev && fs.existsSync(userDataConfig)) {
     return userDataConfig
   }
   

@@ -11,7 +11,8 @@ function getConfigFile() {
   const userDataConfig = path.join(app.getPath("userData"), "config.json");
   const extraResourcesConfig = isDev ? null : path.join(process.resourcesPath, "config.json");
   const devConfig = path.join(__dirname, "../../config.json");
-  if (fs.existsSync(userDataConfig)) {
+  console.log("🚀 ~ getConfigFile ~ devConfig:", devConfig);
+  if (!isDev && fs.existsSync(userDataConfig)) {
     return userDataConfig;
   }
   if (!isDev && extraResourcesConfig && fs.existsSync(extraResourcesConfig)) {

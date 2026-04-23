@@ -1,5 +1,6 @@
 /dist/
 /node_modules/
+/out/
 /cn_desktop/dist/
 /cn_desktop/node_modules/
 /cn_desktop-vue/dist/
