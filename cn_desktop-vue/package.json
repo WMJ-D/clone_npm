@@ -37,6 +37,12 @@
     "files": [
       "out/**/*"
     ],
+    "extraResources": [
+      {
+        "from": "config.json",
+        "to": "config.json"
+      }
+    ],
     "asarUnpack": [
       "node_modules/node-pty/**/*"
     ],

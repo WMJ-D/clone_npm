@@ -16,29 +16,38 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
 // 获取正确的 config.json 路径
 function getConfigFile() {
   const userDataConfig = path.join(app.getPath('userData'), 'config.json')
+  
+  // 打包后 extraResources 在 process.resourcesPath 下
+  const extraResourcesConfig = isDev
+    ? null
+    : path.join(process.resourcesPath, 'config.json')
+  
   // 开发时: electron/main/ -> 项目根目录
-  // 打包后: app.asar/main/ -> app.asar 同级目录
-  const appDirConfig = isDev
-    ? path.join(__dirname, '../../config.json')
-    : path.join(__dirname, '../config.json')
+  const devConfig = path.join(__dirname, '../../config.json')
 
+  // 优先级：用户目录 > extraResources(打包) > dev配置(开发)
   if (fs.existsSync(userDataConfig)) {
     return userDataConfig
-  } else if (fs.existsSync(appDirConfig)) {
-    if (isDev) {
-      return appDirConfig
-    }
-    // 打包后复制到用户目录
+  }
+  
+  if (!isDev && extraResourcesConfig && fs.existsSync(extraResourcesConfig)) {
+    // 打包后首次运行，复制到用户目录
     try {
       const configDir = path.dirname(userDataConfig)
       if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true })
-      fs.copyFileSync(appDirConfig, userDataConfig)
+      fs.copyFileSync(extraResourcesConfig, userDataConfig)
+      console.log('[Config] 从 extraResources 复制到用户目录')
       return userDataConfig
     } catch (copyErr) {
       console.warn('复制配置文件失败:', copyErr.message)
-      return appDirConfig
+      return extraResourcesConfig
     }
   }
+  
+  if (isDev && fs.existsSync(devConfig)) {
+    return devConfig
+  }
+  
   return userDataConfig
 }
 
@@ -81,8 +90,8 @@ function createWindow() {
     // 开发: electron/main/ -> out/renderer/index.html
     // 打包: app.asar/main/ -> app.asar/out/renderer/index.html
     const rendererPath = isDev
-      ? path.join(__dirname, '../../out/renderer/index.html')
-      : path.join(__dirname, '../out/renderer/index.html')
+      ? path.join(__dirname, '../../renderer/index.html')
+      : path.join(__dirname, '../renderer/index.html')
     mainWindow.loadFile(rendererPath)
   }
 

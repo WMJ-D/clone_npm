@@ -9,22 +9,25 @@ const terminals = /* @__PURE__ */ new Map();
 let terminalIdCounter = 0;
 function getConfigFile() {
   const userDataConfig = path.join(app.getPath("userData"), "config.json");
-  const appDirConfig = isDev ? path.join(__dirname, "../../config.json") : path.join(__dirname, "../config.json");
+  const extraResourcesConfig = isDev ? null : path.join(process.resourcesPath, "config.json");
+  const devConfig = path.join(__dirname, "../../config.json");
   if (fs.existsSync(userDataConfig)) {
     return userDataConfig;
-  } else if (fs.existsSync(appDirConfig)) {
-    if (isDev) {
-      return appDirConfig;
-    }
+  }
+  if (!isDev && extraResourcesConfig && fs.existsSync(extraResourcesConfig)) {
     try {
       const configDir = path.dirname(userDataConfig);
       if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
-      fs.copyFileSync(appDirConfig, userDataConfig);
+      fs.copyFileSync(extraResourcesConfig, userDataConfig);
+      console.log("[Config] 从 extraResources 复制到用户目录");
       return userDataConfig;
     } catch (copyErr) {
       console.warn("复制配置文件失败:", copyErr.message);
-      return appDirConfig;
+      return extraResourcesConfig;
     }
+  }
+  if (isDev && fs.existsSync(devConfig)) {
+    return devConfig;
   }
   return userDataConfig;
 }
@@ -59,7 +62,7 @@ function createWindow() {
   if (process.env.ELECTRON_RENDERER_URL) {
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
   } else {
-    const rendererPath = isDev ? path.join(__dirname, "../../out/renderer/index.html") : path.join(__dirname, "../out/renderer/index.html");
+    const rendererPath = isDev ? path.join(__dirname, "../../renderer/index.html") : path.join(__dirname, "../renderer/index.html");
     mainWindow.loadFile(rendererPath);
   }
   mainWindow.once("ready-to-show", () => mainWindow.show());
