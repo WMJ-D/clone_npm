@@ -2,7 +2,10 @@
   <div class="ai-chat-page">
     <header class="ai-page-header">
       <h2>AI 智能助手</h2>
-      <el-button @click="$router.push('/')">← 返回配置页</el-button>
+      <div class="header-actions">
+        <el-button type="primary" @click="$router.push('/iframe-page')">🌐 系统入口</el-button>
+        <el-button @click="$router.push('/')">← 返回配置页</el-button>
+      </div>
     </header>
 
     <h3 class="chat-section-title">国产 AI 平台</h3>
@@ -58,8 +61,23 @@ function openAI(url) {
 <style lang="scss" scoped>
 .ai-chat-page { min-height: 100vh; background: #1a1a2e; color: #e4e4e7; padding: 20px; }
 
-.ai-page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;
-  h2 { font-size: 28px; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.ai-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+
+  h2 {
+    font-size: 28px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 12px;
+  }
 }
 
 .chat-section-title { font-size: 18px; margin: 24px 0 16px; padding-left: 12px; border-left: 4px solid #667eea; }

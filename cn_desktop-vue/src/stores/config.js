@@ -5,6 +5,7 @@ export const useConfigStore = defineStore('config', () => {
   const configList = ref([])
   const CodingEditPath = ref('')
   const CodingEditPathList = ref([])
+  const systemTabs = ref([])
   const isLoading = ref(false)
   const activeFilter = ref('all')
 
@@ -43,6 +44,7 @@ export const useConfigStore = defineStore('config', () => {
       }))
       CodingEditPath.value = data.CodingEditPath || ''
       CodingEditPathList.value = data.CodingEditPathList || []
+      systemTabs.value = data.systemTabs || []
     } catch (e) { console.error('加载配置失败:', e) }
     finally { isLoading.value = false }
   }
@@ -59,7 +61,13 @@ export const useConfigStore = defineStore('config', () => {
       await window.electronAPI.saveConfig({
         configList: rawConfigList,
         CodingEditPath: toRaw(CodingEditPath.value),
-        CodingEditPathList: [...toRaw(CodingEditPathList.value)]
+        CodingEditPathList: [...toRaw(CodingEditPathList.value)],
+        systemTabs: toRaw(systemTabs.value).map(item => {
+                      const raw = toRaw(item)
+                      // 移除 _index 等内部属性
+                      const { ...rest } = raw
+                      return rest
+                    })
       })
       return true
     } catch (e) { console.error('保存配置失败:', e); return false }
@@ -76,7 +84,7 @@ export const useConfigStore = defineStore('config', () => {
   function setFilter(filter) { activeFilter.value = filter }
 
   return {
-    configList, CodingEditPath, CodingEditPathList, isLoading, activeFilter,
+    configList, CodingEditPath, CodingEditPathList, systemTabs, isLoading, activeFilter,
     totalCount, enabledItems, filteredItems, groupedByPName,
     loadConfig, saveConfig, addConfigItem, removeConfigItem, setFilter
   }

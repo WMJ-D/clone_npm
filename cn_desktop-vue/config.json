@@ -403,5 +403,17 @@
     "D:\\Trae CN\\Trae CN.exe",
     "D:\\cursor\\Cursor.exe",
     "D:\\CodeBuddy CN\\CodeBuddy CN.exe"
+  ],
+  "systemTabs": [
+    {
+      "id": "4",
+      "name": "掘金",
+      "url": "https://juejin.cn/"
+    },
+    {
+      "id": "1776930431781",
+      "name": "EZ",
+      "url": "http://192.168.10.123/OA/Portal/index.aspx"
+    }
   ]
 }
