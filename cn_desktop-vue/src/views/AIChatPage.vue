@@ -59,7 +59,7 @@ function openAI(url) {
 </script>
 
 <style lang="scss" scoped>
-.ai-chat-page { min-height: 100vh; background: #1a1a2e; color: #e4e4e7; padding: 20px; }
+.ai-chat-page { max-height: 100vh; overflow: auto; background: #1a1a2e; color: #e4e4e7; padding: 20px; }
 
 .ai-page-header {
   display: flex;

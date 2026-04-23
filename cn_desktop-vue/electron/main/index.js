@@ -78,7 +78,8 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
-      webSecurity: true
+      webSecurity: true,
+      partition: 'persist:main'  // 共享 Cookie 存储
     },
     show: false,
     backgroundColor: '#1a1a2e'
@@ -457,7 +458,34 @@ ipcMain.handle('terminal-close', (e, { termId }) => {
 process.on('uncaughtException', (err) => console.error('[Uncaught]', err))
 process.on('unhandledRejection', (err) => console.error('[Unhandled]', err))
 
+// 配置 Cookie 策略，允许第三方 Cookie（解决 iframe 中某些网站的登录问题）
 app.whenReady().then(() => {
+  const { session } = require('electron')
+  // 设置更宽松的 Cookie 策略
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Set-Cookie': details.responseHeaders['set-cookie']?.map(cookie => {
+          // 允许第三方 Cookie：移除 SameSite 限制
+          return cookie
+            .replace('SameSite=Strict', 'SameSite=None')
+            .replace('SameSite=Lax', 'SameSite=None')
+        }) || []
+      }
+    })
+  })
+
+  // 允许所有 iframe 内容（调试用，生产环境谨慎使用）
+  // 或者针对特定域名设置
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    if (permission === 'iframe') {
+      callback(true) // 允许 iframe
+    } else {
+      callback(false)
+    }
+  })
+
   console.log('[App] Ready，创建窗口...')
   console.log('[App] 运行模式:', isDev ? '开发' : '打包')
   loadConfigFile() // 初始化配置文件路径

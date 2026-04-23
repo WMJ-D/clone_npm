@@ -55,7 +55,9 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
-      webSecurity: true
+      webSecurity: true,
+      partition: "persist:main"
+      // 共享 Cookie 存储
     },
     show: false,
     backgroundColor: "#1a1a2e"
@@ -416,6 +418,24 @@ ipcMain.handle("terminal-close", (e, { termId }) => {
 process.on("uncaughtException", (err) => console.error("[Uncaught]", err));
 process.on("unhandledRejection", (err) => console.error("[Unhandled]", err));
 app.whenReady().then(() => {
+  const { session } = require("electron");
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        "Set-Cookie": details.responseHeaders["set-cookie"]?.map((cookie) => {
+          return cookie.replace("SameSite=Strict", "SameSite=None").replace("SameSite=Lax", "SameSite=None");
+        }) || []
+      }
+    });
+  });
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    if (permission === "iframe") {
+      callback(true);
+    } else {
+      callback(false);
+    }
+  });
   console.log("[App] Ready，创建窗口...");
   console.log("[App] 运行模式:", isDev ? "开发" : "打包");
   loadConfigFile();
