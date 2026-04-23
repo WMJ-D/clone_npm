@@ -4,33 +4,42 @@ const path = require("path");
 const fs = require("fs");
 const { spawn, exec } = require("child_process");
 const pty = require("node-pty");
+const isDev = !app.isPackaged;
 const terminals = /* @__PURE__ */ new Map();
 let terminalIdCounter = 0;
-function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-let CONFIG_FILE;
-const userDataConfig = path.join(app.getPath("userData"), "config.json");
-const appDirConfig = path.join(__dirname, "../../config.json");
-if (fs.existsSync(userDataConfig)) {
-  CONFIG_FILE = userDataConfig;
-} else if (fs.existsSync(appDirConfig)) {
-  CONFIG_FILE = appDirConfig;
-  if (app.isPackaged) {
+function getConfigFile() {
+  const userDataConfig = path.join(app.getPath("userData"), "config.json");
+  const appDirConfig = isDev ? path.join(__dirname, "../../config.json") : path.join(__dirname, "../config.json");
+  if (fs.existsSync(userDataConfig)) {
+    return userDataConfig;
+  } else if (fs.existsSync(appDirConfig)) {
+    if (isDev) {
+      return appDirConfig;
+    }
     try {
       const configDir = path.dirname(userDataConfig);
       if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
       fs.copyFileSync(appDirConfig, userDataConfig);
-      CONFIG_FILE = userDataConfig;
+      return userDataConfig;
     } catch (copyErr) {
       console.warn("复制配置文件失败:", copyErr.message);
+      return appDirConfig;
     }
   }
-} else {
-  CONFIG_FILE = userDataConfig;
+  return userDataConfig;
 }
+let CONFIG_FILE;
+let configLoaded = false;
 const DEFAULT_CONFIG = { configList: [], CodingEditPath: "", CodingEditPathList: [] };
 let mainWindow = null;
+function loadConfigFile() {
+  if (!configLoaded) {
+    CONFIG_FILE = getConfigFile();
+    configLoaded = true;
+    console.log("[Config] 配置文件路径:", CONFIG_FILE);
+  }
+  return CONFIG_FILE;
+}
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -41,7 +50,8 @@ function createWindow() {
       preload: path.join(__dirname, "../preload/index.js"),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
+      sandbox: false,
+      webSecurity: true
     },
     show: false,
     backgroundColor: "#1a1a2e"
@@ -49,17 +59,19 @@ function createWindow() {
   if (process.env.ELECTRON_RENDERER_URL) {
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
   } else {
-    mainWindow.loadFile(path.join(__dirname, "../../dist/index.html"));
+    const rendererPath = isDev ? path.join(__dirname, "../../out/renderer/index.html") : path.join(__dirname, "../out/renderer/index.html");
+    mainWindow.loadFile(rendererPath);
   }
   mainWindow.once("ready-to-show", () => mainWindow.show());
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
-  if (!app.isPackaged) mainWindow.webContents.openDevTools();
+  if (isDev) mainWindow.webContents.openDevTools();
 }
 function loadConfig() {
   try {
-    if (fs.existsSync(CONFIG_FILE)) return JSON.parse(fs.readFileSync(CONFIG_FILE, "utf-8"));
+    const cfgFile = loadConfigFile();
+    if (fs.existsSync(cfgFile)) return JSON.parse(fs.readFileSync(cfgFile, "utf-8"));
   } catch (e) {
     console.error("加载配置失败:", e);
   }
@@ -67,9 +79,10 @@ function loadConfig() {
 }
 function saveConfig(config) {
   try {
-    const configDir = path.dirname(CONFIG_FILE);
+    const cfgFile = loadConfigFile();
+    const configDir = path.dirname(cfgFile);
     if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), "utf-8");
+    fs.writeFileSync(cfgFile, JSON.stringify(config, null, 2), "utf-8");
     return true;
   } catch (e) {
     console.error("保存配置失败:", e);
@@ -167,7 +180,7 @@ ipcMain.handle("git-clone", async (e, { gitUrl, targetDir, branch }) => {
         mainWindow.webContents.send("terminal-exit", { termId, exitCode });
       }
     });
-    const cmd = branch ? `git clone -b ${branch} "${gitUrl}" "${projectName}"\r` : `git clone "${gitUrl}" "${projectName}"\r`;
+    const cmd = `git clone "${gitUrl}" "${projectName}"\r`;
     ptyProcess.write(cmd);
     return { success: true, targetPath, termId };
   } catch (e2) {
@@ -268,40 +281,36 @@ ipcMain.handle("npm-run-dev", async (e, { targetPath }) => {
 ipcMain.handle("clear-node-modules", async (e, { targetPath }) => {
   try {
     if (!checkPathExist(targetPath)) return { success: false, error: "路径不存在" };
-    const nodeModulesPath = path.join(targetPath, "node_modules");
-    const packageLockPath = path.join(targetPath, "package-lock.json");
-    if (checkPathExist(nodeModulesPath)) {
-      mainWindow?.webContents.send("command-output", { type: "log", data: `正在删除 node_modules...
-` });
-      if (process.platform === "win32") {
-        let retry = 3;
-        while (retry > 0) {
-          try {
-            await execPromise(`rmdir /s /q "${nodeModulesPath}"`, { timeout: 6e4 });
-            break;
-          } catch {
-            retry--;
-            if (retry === 0) return { success: false, error: "删除失败" };
-            await sleep(2e3);
-          }
-        }
-      } else {
-        fs.rmSync(nodeModulesPath, { recursive: true, force: true });
+    const termId = terminalIdCounter++;
+    const shell2 = process.platform === "win32" ? "cmd.exe" : "bash";
+    const ptyProcess = pty.spawn(shell2, [], {
+      cwd: targetPath,
+      name: "xterm-256color",
+      cols: 120,
+      rows: 24,
+      env: process.env
+    });
+    terminals.set(termId, ptyProcess);
+    ptyProcess.onData((data) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("terminal-data", { termId, data });
       }
-      mainWindow?.webContents.send("command-output", { type: "log", data: `已删除 node_modules
-` });
-    }
-    if (checkPathExist(packageLockPath)) {
-      try {
-        fs.unlinkSync(packageLockPath);
-      } catch {
+    });
+    ptyProcess.onExit(({ exitCode }) => {
+      terminals.delete(termId);
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("terminal-exit", { termId, exitCode });
       }
+    });
+    if (process.platform === "win32") {
+      ptyProcess.write(`taskkill /F /IM node.exe 2>nul\r`);
+      ptyProcess.write(`rmdir /s /q node_modules\r`);
+      ptyProcess.write(`del package-lock.json /q\r`);
+      ptyProcess.write(`npm cache clean --force\r`);
+    } else {
+      ptyProcess.write(`rm -rf node_modules && rm -f package-lock.json && npm cache clean --force\r`);
     }
-    try {
-      await execPromise("npm cache clean --force", { cwd: targetPath, timeout: 2e4 });
-    } catch {
-    }
-    return { success: true };
+    return { success: true, termId };
   } catch (e2) {
     return { success: false, error: e2.message };
   }
@@ -404,6 +413,8 @@ process.on("uncaughtException", (err) => console.error("[Uncaught]", err));
 process.on("unhandledRejection", (err) => console.error("[Unhandled]", err));
 app.whenReady().then(() => {
   console.log("[App] Ready，创建窗口...");
+  console.log("[App] 运行模式:", isDev ? "开发" : "打包");
+  loadConfigFile();
   createWindow();
 }).catch((err) => {
   console.error("[App] Ready 失败:", err);

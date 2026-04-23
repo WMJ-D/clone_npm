@@ -4,6 +4,6 @@
 /cn_desktop/node_modules/
 /cn_desktop-vue/dist/
 /cn_desktop-vue/node_modules/
-
+/cn_desktop-vue/out/
 
 package-lock.json

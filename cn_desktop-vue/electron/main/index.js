@@ -4,36 +4,58 @@ const fs = require('fs')
 const { spawn, exec } = require('child_process')
 const pty = require('node-pty')
 
+// 判断是否为开发模式
+const isDev = !app.isPackaged
+
 // PTY 终端管理
 const terminals = new Map()
 let terminalIdCounter = 0
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
 
-let CONFIG_FILE
-const userDataConfig = path.join(app.getPath('userData'), 'config.json')
-const appDirConfig = path.join(__dirname, '../../config.json')
+// 获取正确的 config.json 路径
+function getConfigFile() {
+  const userDataConfig = path.join(app.getPath('userData'), 'config.json')
+  // 开发时: electron/main/ -> 项目根目录
+  // 打包后: app.asar/main/ -> app.asar 同级目录
+  const appDirConfig = isDev
+    ? path.join(__dirname, '../../config.json')
+    : path.join(__dirname, '../config.json')
 
-if (fs.existsSync(userDataConfig)) {
-  CONFIG_FILE = userDataConfig
-} else if (fs.existsSync(appDirConfig)) {
-  CONFIG_FILE = appDirConfig
-  if (app.isPackaged) {
+  if (fs.existsSync(userDataConfig)) {
+    return userDataConfig
+  } else if (fs.existsSync(appDirConfig)) {
+    if (isDev) {
+      return appDirConfig
+    }
+    // 打包后复制到用户目录
     try {
       const configDir = path.dirname(userDataConfig)
       if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true })
       fs.copyFileSync(appDirConfig, userDataConfig)
-      CONFIG_FILE = userDataConfig
+      return userDataConfig
     } catch (copyErr) {
       console.warn('复制配置文件失败:', copyErr.message)
+      return appDirConfig
     }
   }
-} else {
-  CONFIG_FILE = userDataConfig
+  return userDataConfig
 }
+
+let CONFIG_FILE
+let configLoaded = false
 
 const DEFAULT_CONFIG = { configList: [], CodingEditPath: '', CodingEditPathList: [] }
 let mainWindow = null
+
+function loadConfigFile() {
+  if (!configLoaded) {
+    CONFIG_FILE = getConfigFile()
+    configLoaded = true
+    console.log('[Config] 配置文件路径:', CONFIG_FILE)
+  }
+  return CONFIG_FILE
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -45,36 +67,45 @@ function createWindow() {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
+      sandbox: false,
+      webSecurity: true
     },
     show: false,
     backgroundColor: '#1a1a2e'
   })
 
+  // 开发时使用 Vite dev server，打包后使用文件
   if (process.env.ELECTRON_RENDERER_URL) {
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../../dist/index.html'))
+    // 开发: electron/main/ -> out/renderer/index.html
+    // 打包: app.asar/main/ -> app.asar/out/renderer/index.html
+    const rendererPath = isDev
+      ? path.join(__dirname, '../../out/renderer/index.html')
+      : path.join(__dirname, '../out/renderer/index.html')
+    mainWindow.loadFile(rendererPath)
   }
 
   mainWindow.once('ready-to-show', () => mainWindow.show())
   mainWindow.on('closed', () => { mainWindow = null })
 
-  if (!app.isPackaged) mainWindow.webContents.openDevTools()
+  if (isDev) mainWindow.webContents.openDevTools()
 }
 
 function loadConfig() {
   try {
-    if (fs.existsSync(CONFIG_FILE)) return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'))
+    const cfgFile = loadConfigFile()
+    if (fs.existsSync(cfgFile)) return JSON.parse(fs.readFileSync(cfgFile, 'utf-8'))
   } catch (e) { console.error('加载配置失败:', e) }
   return { ...DEFAULT_CONFIG }
 }
 
 function saveConfig(config) {
   try {
-    const configDir = path.dirname(CONFIG_FILE)
+    const cfgFile = loadConfigFile()
+    const configDir = path.dirname(cfgFile)
     if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true })
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8')
+    fs.writeFileSync(cfgFile, JSON.stringify(config, null, 2), 'utf-8')
     return true
   } catch (e) { console.error('保存配置失败:', e); return false }
 }
@@ -418,6 +449,8 @@ process.on('unhandledRejection', (err) => console.error('[Unhandled]', err))
 
 app.whenReady().then(() => {
   console.log('[App] Ready，创建窗口...')
+  console.log('[App] 运行模式:', isDev ? '开发' : '打包')
+  loadConfigFile() // 初始化配置文件路径
   createWindow()
 }).catch((err) => {
   console.error('[App] Ready 失败:', err)
