@@ -299,25 +299,29 @@ ipcMain.handle("clear-node-modules", async (e, { targetPath }) => {
       env: process.env
     });
     terminals.set(termId, ptyProcess);
-    ptyProcess.onData((data) => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send("terminal-data", { termId, data });
+    return new Promise((resolve) => {
+      ptyProcess.onData((data) => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send("terminal-data", { termId, data });
+        }
+      });
+      ptyProcess.onExit(({ exitCode }) => {
+        terminals.delete(termId);
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send("terminal-exit", { termId, exitCode });
+        }
+        resolve({ success: true, termId, exitCode });
+      });
+      if (process.platform === "win32") {
+        ptyProcess.write(`cd /d "${targetPath}"\r`);
+        ptyProcess.write(`rmdir /s /q node_modules\r`);
+        ptyProcess.write(`del package-lock.json /q\r`);
+        ptyProcess.write(`npm cache clean --force\r`);
+        ptyProcess.write(`exit\r`);
+      } else {
+        ptyProcess.write(`cd "${targetPath}" && rm -rf node_modules && rm -f package-lock.json && npm cache clean --force && exit\r`);
       }
     });
-    ptyProcess.onExit(({ exitCode }) => {
-      terminals.delete(termId);
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send("terminal-exit", { termId, exitCode });
-      }
-    });
-    if (process.platform === "win32") {
-      ptyProcess.write(`rmdir /s /q node_modules\r`);
-      ptyProcess.write(`del package-lock.json /q\r`);
-      ptyProcess.write(`npm cache clean --force\r`);
-    } else {
-      ptyProcess.write(`rm -rf node_modules && rm -f package-lock.json && npm cache clean --force\r`);
-    }
-    return { success: true, termId };
   } catch (e2) {
     return { success: false, error: e2.message };
   }

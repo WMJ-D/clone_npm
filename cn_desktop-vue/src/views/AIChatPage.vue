@@ -40,6 +40,17 @@
         </div>
       </div>
     </div>
+
+    <h3 class="chat-section-title">开发工具</h3>
+    <div class="ai-grid">
+      <div v-for="tool in tools" :key="tool.name" class="ai-card tool-card" @click="$router.push(tool.route)">
+        <div class="ai-icon">{{ tool.icon }}</div>
+        <div class="ai-info">
+          <div class="ai-name">{{ tool.name }}</div>
+          <div class="ai-desc">{{ tool.desc }}</div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -72,6 +83,10 @@ const games = [
   { name: '推箱子', icon: '📦', route: '/sokoban', desc: '经典推箱子解谜' },
 ]
 
+const tools = [
+  { name: 'Postman', icon: '🚀', route: '/api-tester', desc: 'API 接口请求测试工具' },
+]
+
 function openAI(url) {
   window.electronAPI.openExternal(url)
 }
@@ -89,6 +104,7 @@ function openAI(url) {
   h2 {
     font-size: 22px;
     background: linear-gradient(135deg, #667eea, #764ba2);
+    background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
@@ -120,5 +136,11 @@ function openAI(url) {
   border-color: rgba(168,85,247,0.3);
   &:hover { border-color: #a855f7; box-shadow: 0 4px 12px rgba(168,85,247,0.2); }
   .ai-icon { background: linear-gradient(135deg, rgba(168,85,247,0.2), rgba(236,72,153,0.2)); }
+}
+
+.tool-card {
+  border-color: rgba(34,197,94,0.3);
+  &:hover { border-color: #22c55e; box-shadow: 0 4px 12px rgba(34,197,94,0.2); }
+  .ai-icon { background: linear-gradient(135deg, rgba(34,197,94,0.2), rgba(16,185,129,0.2)); }
 }
 </style>

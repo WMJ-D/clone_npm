@@ -9,7 +9,8 @@ const routes = [
   { path: '/plane-war', name: 'PlaneWar', component: () => import('../views/PlaneWarPage.vue') },
   { path: '/tetris', name: 'Tetris', component: () => import('../views/TetrisPage.vue') },
   { path: '/snake', name: 'Snake', component: () => import('../views/SnakePage.vue') },
-  { path: '/sokoban', name: 'Sokoban', component: () => import('../views/SokobanPage.vue') }
+  { path: '/sokoban', name: 'Sokoban', component: () => import('../views/SokobanPage.vue') },
+  { path: '/api-tester', name: 'ApiTester', component: () => import('../views/ApiTesterPage.vue') }
 ]
 
 export default createRouter({

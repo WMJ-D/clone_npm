@@ -11,7 +11,51 @@ const isDev = !app.isPackaged
 const terminals = new Map()
 let terminalIdCounter = 0
 
+// 持久终端会话
+let mainTerminal = null
+let mainTermId = null
+
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
+
+// 获取或创建持久终端
+function getMainTerminal() {
+  if (mainTerminal && !mainTerminal.killed) {
+    return { terminal: mainTerminal, termId: mainTermId }
+  }
+
+  const termId = terminalIdCounter++
+  const shell = process.platform === 'win32' ? 'cmd.exe' : 'bash'
+
+  const ptyProcess = pty.spawn(shell, [], {
+    name: 'xterm-256color',
+    cols: 120,
+    rows: 30,
+    env: process.env
+  })
+
+  terminals.set(termId, ptyProcess)
+  mainTerminal = ptyProcess
+  mainTermId = termId
+
+  ptyProcess.onData((data) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('terminal-data', { termId, data })
+    }
+  })
+
+  ptyProcess.onExit(({ exitCode }) => {
+    terminals.delete(termId)
+    if (mainTermId === termId) {
+      mainTerminal = null
+      mainTermId = null
+    }
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('terminal-exit', { termId, exitCode })
+    }
+  })
+
+  return { terminal: ptyProcess, termId }
+}
 
 // 获取正确的 config.json 路径
 function getConfigFile() {
@@ -169,112 +213,92 @@ ipcMain.handle('git-clone', async (e, { gitUrl, targetDir, branch }) => {
   try {
     if (!checkPathExist(targetDir)) fs.mkdirSync(targetDir, { recursive: true })
     
-    const termId = terminalIdCounter++
-    const shell = process.platform === 'win32' ? 'cmd.exe' : 'bash'
+    if (checkPathExist(targetPath)) return { success: false, error: `目标路径已存在: ${targetPath}` }
+  
+    const { terminal, termId } = getMainTerminal()
     
-    const ptyProcess = pty.spawn(shell, [], {
-      cwd: targetDir,
-      name: 'xterm-256color',
-      cols: 120,
-      rows: 24,
-      env: process.env
-    })
-    
-    terminals.set(termId, ptyProcess)
-    
-    ptyProcess.onData((data) => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('terminal-data', { termId, data })
+    return new Promise((resolve) => {
+      const marker = `__GIT_CLONE_DONE_${Date.now()}__`
+      let output = ''
+      
+      const onData = (data) => {
+        output += data
+        if (output.includes(marker)) {
+          terminal.removeListener('data', onData)
+          resolve({ success: true, targetPath, termId })
+        }
+      }
+      
+      terminal.onData(onData)
+      
+      if (process.platform === 'win32') {
+        terminal.write(`cd /d "${targetDir}"\r`)
+        terminal.write(`git clone "${gitUrl}" "${projectName}"\r`)
+        terminal.write(`echo ${marker}\r`)
+      } else {
+        terminal.write(`cd "${targetDir}" && git clone "${gitUrl}" "${projectName}" && echo ${marker}\r`)
       }
     })
-    
-    ptyProcess.onExit(({ exitCode }) => {
-      terminals.delete(termId)
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('terminal-exit', { termId, exitCode })
-      }
-    })
-    
-    if (checkPathExist(targetPath)) return { success: true, error: `目标路径已存在: ${targetPath}` }
-
-    // 执行 git clone 命令
-    const cmd = `git clone "${gitUrl}" "${projectName}"\r`
-    ptyProcess.write(cmd)
-    
-    return { success: true, targetPath, termId }
   } catch (e) { return { success: false, error: e.message } }
 })
 ipcMain.handle('git-switch-branch', async (e, { targetPath, branch }) => {
   try {
     if (!await checkGitRepo(targetPath)) return { success: false, error: '不是 Git 仓库' }
     
-    const termId = terminalIdCounter++
-    const shell = process.platform === 'win32' ? 'cmd.exe' : 'bash'
+    const { terminal, termId } = getMainTerminal()
     
-    const ptyProcess = pty.spawn(shell, [], {
-      cwd: targetPath,
-      name: 'xterm-256color',
-      cols: 120,
-      rows: 24,
-      env: process.env
-    })
-    
-    terminals.set(termId, ptyProcess)
-    
-    ptyProcess.onData((data) => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('terminal-data', { termId, data })
+    return new Promise((resolve) => {
+      const marker = `__GIT_SWITCH_DONE_${Date.now()}__`
+      let output = ''
+      
+      const onData = (data) => {
+        output += data
+        if (output.includes(marker)) {
+          terminal.removeListener('data', onData)
+          resolve({ success: true, termId })
+        }
+      }
+      
+      terminal.onData(onData)
+      
+      if (process.platform === 'win32') {
+        terminal.write(`cd /d "${targetPath}"\r`)
+        terminal.write(`git fetch origin && git switch ${branch}\r`)
+        terminal.write(`echo ${marker}\r`)
+      } else {
+        terminal.write(`cd "${targetPath}" && git fetch origin && git switch ${branch} && echo ${marker}\r`)
       }
     })
-    
-    ptyProcess.onExit(({ exitCode }) => {
-      terminals.delete(termId)
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('terminal-exit', { termId, exitCode })
-      }
-    })
-    
-    // 执行分支切换命令
-    const cmd = `git fetch origin && git switch ${branch}\r`
-    ptyProcess.write(cmd)
-    
-    return { success: true, termId }
   } catch (e) { return { success: false, error: e.message } }
 })
 ipcMain.handle('npm-install', async (e, { targetPath }) => {
   try {
     if (!checkPackageJson(targetPath)) return { success: false, error: 'package.json 不存在' }
     
-    const termId = terminalIdCounter++
-    const shell = process.platform === 'win32' ? 'cmd.exe' : 'bash'
+    const { terminal, termId } = getMainTerminal()
     
-    const ptyProcess = pty.spawn(shell, [], {
-      cwd: targetPath,
-      name: 'xterm-256color',
-      cols: 120,
-      rows: 24,
-      env: process.env
-    })
-    
-    terminals.set(termId, ptyProcess)
-    
-    ptyProcess.onData((data) => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('terminal-data', { termId, data })
+    return new Promise((resolve) => {
+      const marker = `__NPM_INSTALL_DONE_${Date.now()}__`
+      let output = ''
+      
+      const onData = (data) => {
+        output += data
+        if (output.includes(marker)) {
+          terminal.removeListener('data', onData)
+          resolve({ success: true, termId })
+        }
+      }
+      
+      terminal.onData(onData)
+      
+      if (process.platform === 'win32') {
+        terminal.write(`cd /d "${targetPath}"\r`)
+        terminal.write(`npm i\r`)
+        terminal.write(`echo ${marker}\r`)
+      } else {
+        terminal.write(`cd "${targetPath}" && npm i && echo ${marker}\r`)
       }
     })
-    
-    ptyProcess.onExit(({ exitCode }) => {
-      terminals.delete(termId)
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('terminal-exit', { termId, exitCode })
-      }
-    })
-    
-    // 执行 npm install 命令
-    ptyProcess.write(`cd /d "${targetPath}" && npm i\r`)
-    
-    return { success: true, termId }
   } catch (e) { return { success: false, error: e.message } }
 })
 ipcMain.handle('npm-run-dev', async (e, { targetPath }) => {
@@ -318,116 +342,99 @@ ipcMain.handle('clear-node-modules', async (e, { targetPath }) => {
   try {
     if (!checkPathExist(targetPath)) return { success: false, error: '路径不存在' }
     
-    const termId = terminalIdCounter++
-    const shell = process.platform === 'win32' ? 'cmd.exe' : 'bash'
+    const { terminal, termId } = getMainTerminal()
     
-    const ptyProcess = pty.spawn(shell, [], {
-      cwd: targetPath,
-      name: 'xterm-256color',
-      cols: 120,
-      rows: 24,
-      env: process.env
-    })
-    
-    terminals.set(termId, ptyProcess)
-    
-    ptyProcess.onData((data) => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('terminal-data', { termId, data })
+    // 返回 Promise，等待命令执行完成
+    return new Promise((resolve) => {
+      const marker = `__CLEAR_DONE_${Date.now()}__`
+      let output = ''
+      
+      const onData = (data) => {
+        output += data
+        // 检测命令完成标记
+        if (output.includes(marker)) {
+          terminal.removeListener('data', onData)
+          resolve({ success: true, termId })
+        }
+      }
+      
+      terminal.onData(onData)
+      
+      // 执行清理命令
+      if (process.platform === 'win32') {
+        terminal.write(`cd /d "${targetPath}"\r`)
+        terminal.write(`rmdir /s /q node_modules\r`)
+        terminal.write(`del package-lock.json /q\r`)
+        terminal.write(`npm cache clean --force\r`)
+        // 输出标记，表示命令完成
+        terminal.write(`echo ${marker}\r`)
+      } else {
+        terminal.write(`cd "${targetPath}" && rm -rf node_modules && rm -f package-lock.json && npm cache clean --force && echo ${marker}\r`)
       }
     })
-    
-    ptyProcess.onExit(({ exitCode }) => {
-      terminals.delete(termId)
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('terminal-exit', { termId, exitCode })
-      }
-    })
-    
-    // 执行清理命令
-    if (process.platform === 'win32') {
-      // ptyProcess.write(`taskkill /F /IM node.exe 2>nul\r`)
-      ptyProcess.write(`rmdir /s /q node_modules\r`)
-      ptyProcess.write(`del package-lock.json /q\r`)
-      ptyProcess.write(`npm cache clean --force\r`)
-    } else {
-      ptyProcess.write(`rm -rf node_modules && rm -f package-lock.json && npm cache clean --force\r`)
-    }
-    
-    return { success: true, termId }
   } catch (e) { return { success: false, error: e.message } }
 })
 ipcMain.handle('git-pull', async (e, { targetPath }) => {
   try { 
     if (!await checkGitRepo(targetPath)) return { success: false, error: '不是 Git 仓库' }
     
-    const termId = terminalIdCounter++
-    const shell = process.platform === 'win32' ? 'cmd.exe' : 'bash'
+    const { terminal, termId } = getMainTerminal()
     
-    const ptyProcess = pty.spawn(shell, [], {
-      cwd: targetPath,
-      name: 'xterm-256color',
-      cols: 120,
-      rows: 24,
-      env: process.env
-    })
-    
-    terminals.set(termId, ptyProcess)
-    
-    ptyProcess.onData((data) => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('terminal-data', { termId, data })
+    return new Promise((resolve) => {
+      const marker = `__GIT_PULL_DONE_${Date.now()}__`
+      let output = ''
+      
+      const onData = (data) => {
+        output += data
+        if (output.includes(marker)) {
+          terminal.removeListener('data', onData)
+          resolve({ success: true, termId })
+        }
+      }
+      
+      terminal.onData(onData)
+      
+      if (process.platform === 'win32') {
+        terminal.write(`cd /d "${targetPath}"\r`)
+        terminal.write(`git pull\r`)
+        terminal.write(`echo ${marker}\r`)
+      } else {
+        terminal.write(`cd "${targetPath}" && git pull && echo ${marker}\r`)
       }
     })
-    
-    ptyProcess.onExit(({ exitCode }) => {
-      terminals.delete(termId)
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('terminal-exit', { termId, exitCode })
-      }
-    })
-    
-    // 执行 git pull 命令
-    ptyProcess.write(`git pull\r`)
-    
-    return { success: true, termId }
   } catch (e) { return { success: false, error: e.message } }
 })
 ipcMain.handle('delete-folder', async (e, targetPath) => {
   try { 
     if (!checkPathExist(targetPath)) return { success: false, error: '路径不存在' }
     
-    const termId = terminalIdCounter++
-    const shell = process.platform === 'win32' ? 'cmd.exe' : 'bash'
+    const { terminal, termId } = getMainTerminal()
     
-    const ptyProcess = pty.spawn(shell, [], {
-      cwd: path.dirname(targetPath),
-      name: 'xterm-256color',
-      cols: 120,
-      rows: 24,
-      env: process.env
-    })
-    
-    terminals.set(termId, ptyProcess)
-    
-    ptyProcess.onData((data) => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('terminal-data', { termId, data })
+    return new Promise((resolve) => {
+      const marker = `__DELETE_DONE_${Date.now()}__`
+      let output = ''
+      
+      const onData = (data) => {
+        output += data
+        if (output.includes(marker)) {
+          terminal.removeListener('data', onData)
+          resolve({ success: true, termId })
+        }
+      }
+      
+      terminal.onData(onData)
+      
+      const parentDir = path.dirname(targetPath)
+      const folderName = path.basename(targetPath)
+      
+      if (process.platform === 'win32') {
+        terminal.write(`cd /d "${parentDir}"\r`)
+        terminal.write(`rmdir /s /q "${folderName}"\r`)
+        terminal.write(`echo ${marker}\r`)
+      } else {
+        terminal.write(`cd "${parentDir}" && rm -rf "${folderName}" && echo ${marker}\r`)
       }
     })
-    
-    ptyProcess.onExit(({ exitCode }) => {
-      terminals.delete(termId)
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('terminal-exit', { termId, exitCode })
-      }
-    })
-    
-    // 执行删除命令
-    const folderName = path.basename(targetPath)
-    ptyProcess.write(`rmdir /s /q "${folderName}"\r`)
-    
-    return { success: true, termId }
   } catch (e) { return { success: false, error: e.message } }
 })
 ipcMain.handle('open-external', async (e, url) => { try { await shell.openExternal(url); return { success: true } } catch (e) { return { success: false, error: e.message } } })

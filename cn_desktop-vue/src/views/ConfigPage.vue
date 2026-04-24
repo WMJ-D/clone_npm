@@ -368,23 +368,32 @@ async function handleSingleAction(action, item) {
       const cloneRes = await window.electronAPI.gitClone(item.gitUrl, item.savePath, item.branch)
       if (!cloneRes.success) {
         terminalStore.addLog(`[${item.projectName}] Clone失败: ${cloneRes.error}`, 'error')
-        return
       }
       terminalStore.setCurrentTerm(cloneRes.termId)
       terminalStore.addLog(`[${item.projectName}] Clone成功: ${cloneRes.targetPath}`, 'success')
 
       if (item.branch) {
         terminalStore.addLog(`[${item.projectName}] 正在切换分支...`, 'info')
-        await window.electronAPI.gitSwitchBranch(pathJoin(item.savePath, repoName), item.branch)
+        let res = await window.electronAPI.gitSwitchBranch(pathJoin(item.savePath, repoName), item.branch)
+        if (!res.success) {
+          terminalStore.addLog(`[${item.projectName}] 切换分支失败: ${res.error}`, 'error')
+        } else {
+          terminalStore.addLog(`[${item.projectName}] 切换分支成功`, 'success')
+        }
       }
-
       if (configStore.CodingEditPath) {
-        await window.electronAPI.openWithIDE(item.savePath, configStore.CodingEditPath)
+        let res =await window.electronAPI.openWithIDE(item.savePath, configStore.CodingEditPath)
+          if (!res.success) {
+            terminalStore.addLog(`[${item.projectName}] 打开IDE失败: ${res.error}`, 'error')
+          }else{
+            terminalStore.addLog(`[${item.projectName}] 打开IDE成功`, 'success')
+          }
       }
     } else if (action === 2) {
       // 清除 + 重装
       terminalStore.show()
       const clearRes = await window.electronAPI.clearNodeModules(fullPath)
+      console.log("🚀 ~ handleSingleAction ~ clearRes:", clearRes)
       if (clearRes.success) {
         terminalStore.setCurrentTerm(clearRes.termId)
         terminalStore.addLog(`[${item.projectName}] 开始安装依赖...`, 'info')
