@@ -1,13 +1,14 @@
 {
   "name": "cn-desktop-vue",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Clone-NPM 桌面应用 - Vue 3 + Electron",
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
-    "package": "electron-vite build && electron-builder --win --config",
+    "bump": "node bump-version.js",
+    "package": "node bump-version.js && electron-vite build && electron-builder --win --config",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
@@ -31,6 +32,7 @@
   "build": {
     "appId": "com.wmj.cn-desktop-vue",
     "productName": "Clone-NPM Desktop Vue",
+    "artifactName": "Clone-NPM Desktop Vue Setup ${version}.${ext}",
     "directories": {
       "output": "dist"
     },
