@@ -68,11 +68,17 @@ function loadConfigFile() {
 }
 
 function createWindow() {
+  // 图标路径
+  const iconPath = isDev
+    ? path.join(__dirname, '../../resources/icon.ico')
+    : path.join(process.resourcesPath, 'resources/icon.ico')
+
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     minWidth: 900,
     minHeight: 600,
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,

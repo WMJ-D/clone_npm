@@ -1,6 +1,6 @@
 {
   "name": "cn-desktop-vue",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Clone-NPM 桌面应用 - Vue 3 + Electron",
   "main": "./out/main/index.js",
   "scripts": {
@@ -43,13 +43,18 @@
       {
         "from": "config.json",
         "to": "config.json"
+      },
+      {
+        "from": "resources",
+        "to": "resources"
       }
     ],
     "asarUnpack": [
       "node_modules/node-pty/**/*"
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "resources/icon.ico"
     },
     "nsis": {
       "oneClick": false,
