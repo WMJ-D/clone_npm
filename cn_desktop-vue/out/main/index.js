@@ -164,7 +164,6 @@ ipcMain.handle("git-clone", async (e, { gitUrl, targetDir, branch }) => {
   const targetPath = path.join(targetDir, projectName);
   try {
     if (!checkPathExist(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
-    if (checkPathExist(targetPath)) return { success: false, error: `目标路径已存在: ${targetPath}` };
     const termId = terminalIdCounter++;
     const shell2 = process.platform === "win32" ? "cmd.exe" : "bash";
     const ptyProcess = pty.spawn(shell2, [], {
@@ -186,6 +185,7 @@ ipcMain.handle("git-clone", async (e, { gitUrl, targetDir, branch }) => {
         mainWindow.webContents.send("terminal-exit", { termId, exitCode });
       }
     });
+    if (checkPathExist(targetPath)) return { success: true, error: `目标路径已存在: ${targetPath}` };
     const cmd = `git clone "${gitUrl}" "${projectName}"\r`;
     ptyProcess.write(cmd);
     return { success: true, targetPath, termId };
@@ -309,7 +309,6 @@ ipcMain.handle("clear-node-modules", async (e, { targetPath }) => {
       }
     });
     if (process.platform === "win32") {
-      ptyProcess.write(`taskkill /F /IM node.exe 2>nul\r`);
       ptyProcess.write(`rmdir /s /q node_modules\r`);
       ptyProcess.write(`del package-lock.json /q\r`);
       ptyProcess.write(`npm cache clean --force\r`);

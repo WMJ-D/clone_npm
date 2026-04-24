@@ -373,7 +373,7 @@ async function handleSingleAction(action, item) {
       terminalStore.setCurrentTerm(cloneRes.termId)
       terminalStore.addLog(`[${item.projectName}] Clone成功: ${cloneRes.targetPath}`, 'success')
 
-      if (item.branch && item.branch !== 'master') {
+      if (item.branch) {
         terminalStore.addLog(`[${item.projectName}] 正在切换分支...`, 'info')
         await window.electronAPI.gitSwitchBranch(pathJoin(item.savePath, repoName), item.branch)
       }
@@ -426,17 +426,24 @@ async function handleSingleAction(action, item) {
       if (!item.gitUrl || !item.savePath) return
       terminalStore.show()
       const cloneRes = await window.electronAPI.gitClone(item.gitUrl, item.savePath, item.branch)
+      console.log("🚀 ~ handleSingleAction ~ cloneRes:", cloneRes)
       if (cloneRes.success) {
         terminalStore.setCurrentTerm(cloneRes.termId)
         terminalStore.addLog(`[${item.projectName}] 正在切换分支...`, 'info')
-        if (item.branch && item.branch !== 'master') {
+        if (item.branch) {
           await window.electronAPI.gitSwitchBranch(pathJoin(item.savePath, repoName), item.branch)
         }
         if (configStore.CodingEditPath) {
           await window.electronAPI.openWithIDE(item.savePath, configStore.CodingEditPath)
         }
         terminalStore.addLog(`[${item.projectName}] 开始安装依赖...`, 'info')
-        await window.electronAPI.npmInstall(fullPath)
+        const installRes = await window.electronAPI.npmInstall(fullPath)
+        if (installRes.success) {
+          terminalStore.setCurrentTerm(installRes.termId)
+          terminalStore.addLog(`[${item.projectName}] 启动依赖安装成功`, 'success')
+        } else {
+          terminalStore.addLog(`[${item.projectName}] 启动依赖安装失败: ${installRes.error}`, 'error')
+        }
       }
     }
   } catch (e) {

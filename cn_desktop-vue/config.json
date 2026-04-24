@@ -395,6 +395,18 @@
       "testEnvUrl": "",
       "prodEnvUrl": "",
       "id": "item_1776830741876_32"
+    },
+    {
+      "id": 1777002446097,
+      "enable": false,
+      "pName": "组件库",
+      "projectName": "base-10.7.8.101100B版本",
+      "gitUrl": "http://192.168.182.252/Domain/webdir_v3/webcomponents-base-v3.git",
+      "branch": "10.7.8.101100B",
+      "savePath": "D:\\桌面\\中地\\代码\\组件库\\10.7.8.101100B",
+      "codePath": "\\webcomponents-base-v3\\mapgis-gm-webcomponents-base",
+      "testEnvUrl": "",
+      "prodEnvUrl": ""
     }
   ],
   "CodingEditPath": "D:\\CodeBuddy CN\\CodeBuddy CN.exe",

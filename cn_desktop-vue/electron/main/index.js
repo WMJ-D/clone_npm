@@ -162,7 +162,6 @@ ipcMain.handle('git-clone', async (e, { gitUrl, targetDir, branch }) => {
   const targetPath = path.join(targetDir, projectName)
   try {
     if (!checkPathExist(targetDir)) fs.mkdirSync(targetDir, { recursive: true })
-    if (checkPathExist(targetPath)) return { success: false, error: `目标路径已存在: ${targetPath}` }
     
     const termId = terminalIdCounter++
     const shell = process.platform === 'win32' ? 'cmd.exe' : 'bash'
@@ -190,6 +189,8 @@ ipcMain.handle('git-clone', async (e, { gitUrl, targetDir, branch }) => {
       }
     })
     
+    if (checkPathExist(targetPath)) return { success: true, error: `目标路径已存在: ${targetPath}` }
+
     // 执行 git clone 命令
     const cmd = `git clone "${gitUrl}" "${projectName}"\r`
     ptyProcess.write(cmd)
@@ -339,7 +340,7 @@ ipcMain.handle('clear-node-modules', async (e, { targetPath }) => {
     
     // 执行清理命令
     if (process.platform === 'win32') {
-      ptyProcess.write(`taskkill /F /IM node.exe 2>nul\r`)
+      // ptyProcess.write(`taskkill /F /IM node.exe 2>nul\r`)
       ptyProcess.write(`rmdir /s /q node_modules\r`)
       ptyProcess.write(`del package-lock.json /q\r`)
       ptyProcess.write(`npm cache clean --force\r`)
