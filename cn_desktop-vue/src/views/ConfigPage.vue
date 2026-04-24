@@ -22,6 +22,9 @@
         <el-button @click="$router.push('/ai-chat')">
           <el-icon><ChatDotRound /></el-icon> AI智能助手
         </el-button>
+        <el-link type="info" :underline="false" @click="showHelpDialog = true" class="help-link">
+          <el-icon><QuestionFilled /></el-icon> 操作说明
+        </el-link>
       </div>
     </header>
 
@@ -138,6 +141,61 @@
         </div>
       </main>
     </div>
+
+    <!-- 操作说明对话框 -->
+    <el-dialog v-model="showHelpDialog" title="操作说明" width="600px" class="help-dialog">
+      <div class="help-content">
+        <h3>🚀 快速开始</h3>
+        <ol>
+          <li><strong>新增项目</strong>：点击顶部「新增项目」按钮，填写 Git 地址、分支、保存路径等信息</li>
+          <li><strong>保存配置</strong>：填写完成后点击「保存配置」，配置会持久化存储</li>
+          <li><strong>勾选项目</strong>：在项目卡片左侧勾选需要批量操作的项目</li>
+        </ol>
+
+        <h3>⚡ 五大操作</h3>
+        <table class="help-table">
+          <tr>
+            <td><strong>Clone + 分支 + IDE</strong></td>
+            <td>克隆仓库 → 切换分支 → 用 IDE 打开</td>
+          </tr>
+          <tr>
+            <td><strong>清除 + 重装</strong></td>
+            <td>删除 node_modules → 清除缓存 → 重新安装依赖</td>
+          </tr>
+          <tr>
+            <td><strong>IDE 打开</strong></td>
+            <td>用配置的 IDE 编辑器打开项目目录</td>
+          </tr>
+          <tr>
+            <td><strong>拉取 + 启动</strong></td>
+            <td>git pull 更新代码 → npm run dev 启动开发服务器</td>
+          </tr>
+          <tr>
+            <td><strong>一键完成</strong></td>
+            <td>Clone → 切分支 → IDE 打开 → 安装依赖（全流程自动化）</td>
+          </tr>
+        </table>
+
+        <h3>💡 使用技巧</h3>
+        <ul>
+          <li>点击顶部按钮会批量操作所有<strong>已勾选</strong>的项目</li>
+          <li>点击项目卡片底部的按钮可对<strong>单个项目</strong>执行操作</li>
+          <li>左侧边栏可按<strong>项目分组</strong>筛选，点击「已勾选执行」可快速定位</li>
+          <li>右侧终端面板会实时显示命令执行过程</li>
+          <li>「子路径」字段用于指定代码在仓库中的位置，如 <code>\webapp</code></li>
+        </ul>
+
+        <h3>🔧 IDE 配置</h3>
+        <ul>
+          <li>点击「添加编辑器」选择 IDE 的 exe 文件路径</li>
+          <li>支持多个 IDE，下拉选择当前使用的编辑器</li>
+          <li>常用路径：VS Code、Trae、Cursor、CodeBuddy 等</li>
+        </ul>
+      </div>
+      <template #footer>
+        <el-button type="primary" @click="showHelpDialog = false">知道了</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -153,6 +211,7 @@ const configStore = useConfigStore()
 const terminalStore = useTerminalStore()
 const configListRef = ref(null)
 const showBackToTop = ref(false)
+const showHelpDialog = ref(false)
 
 onMounted(async () => {
   await configStore.loadConfig()
@@ -207,6 +266,7 @@ function handleRefresh() {
 }
 
 function handleAddItem() {
+  configStore.setFilter('all')
   configStore.addConfigItem()
   nextTick(() => {
     if (configListRef.value) {
@@ -458,5 +518,84 @@ async function handleSingleAction(action, item) {
   padding: 60px 20px; color: #666;
   .cfg-empty-icon { font-size: 48px; margin-bottom: 16px; }
   .cfg-empty-text { margin-bottom: 20px; font-size: 14px; }
+}
+
+.help-link {
+  margin-left: 8px;
+  font-size: 13px;
+  color: #a1a1aa;
+  cursor: pointer;
+  transition: color 0.2s;
+  &:hover { color: #667eea; }
+}
+
+.help-content {
+  h3 {
+    font-size: 16px;
+    margin: 20px 0 12px;
+    padding-left: 8px;
+    border-left: 3px solid #667eea;
+    &:first-child { margin-top: 0; }
+  }
+  ol, ul {
+    padding-left: 20px;
+    li {
+      margin-bottom: 8px;
+      line-height: 1.6;
+      color: #c9d1d9;
+      strong { color: #e4e4e7; }
+    }
+  }
+  code {
+    background: rgba(102,126,234,0.2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #a5b4fc;
+  }
+}
+
+.help-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+  td {
+    padding: 10px 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+    font-size: 13px;
+    &:first-child {
+      width: 180px;
+      color: #a5b4fc;
+      white-space: nowrap;
+    }
+    &:last-child { color: #c9d1d9; }
+  }
+  tr:hover td { background: rgba(255,255,255,0.03); }
+}
+</style>
+
+<style lang="scss">
+.help-dialog.el-dialog {
+  background: #1a1a2e !important;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+
+  .el-dialog__header {
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding: 16px 20px;
+    margin-right: 0;
+    .el-dialog__title { color: #e4e4e7; font-size: 18px; font-weight: 600; }
+    .el-dialog__headerbtn .el-icon { color: #a1a1aa; &:hover { color: #667eea; } }
+  }
+  .el-dialog__body { padding: 20px; color: #e4e4e7; }
+  .el-dialog__footer {
+    border-top: 1px solid rgba(255,255,255,0.1);
+    padding: 16px 20px;
+    .el-button--primary {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border: none;
+      &:hover { opacity: 0.9; }
+    }
+  }
 }
 </style>
