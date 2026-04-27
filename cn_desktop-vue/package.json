@@ -1,6 +1,6 @@
 {
   "name": "cn-desktop-vue",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Clone-NPM 桌面应用 - Vue 3 + Electron",
   "main": "./out/main/index.js",
   "scripts": {
