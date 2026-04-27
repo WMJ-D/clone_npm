@@ -257,6 +257,10 @@ async function sendMessage() {
             const delta = json.choices?.[0]?.delta?.content
             if (delta) {
               const lastMsg = aiStore.messages[aiStore.messages.length - 1]
+              // 第一次收到内容时，清除"思考中..."
+              if (lastMsg.content === '思考中...') {
+                lastMsg.content = ''
+              }
               lastMsg.content += delta
               scrollToBottom()
             }
@@ -319,7 +323,7 @@ async function sendMessage() {
 }
 .aim-stats { color: #666; font-size: 12px; margin-bottom: 16px; }
 
-.aim-content { height: 350px; overflow-y: auto; margin-bottom: 24px; }
+.aim-content { max-height: 350px; overflow-y: auto;  padding: 16px 0; }
 .aim-placeholder { text-align: center; padding: 40px; color: #666; }
 .aim-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
 .aim-card { background: #16213e; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 12px; cursor: pointer; transition: all 0.2s;
