@@ -92,7 +92,8 @@
         </div>
         <div v-for="msg in aiStore.messages" :key="msg.id" :class="['aim-chat-msg', msg.role, { isError: msg.isError }]">
           <div class="aim-chat-avatar">{{ msg.role === 'user' ? '👤' : '🤖' }}</div>
-          <div class="aim-chat-content">{{ msg.content }}</div>
+          <div class="aim-chat-content" v-if="msg.role === 'user'">{{ msg.content }}</div>
+          <div class="aim-chat-content markdown-body" v-else v-html="parseMarkdown(msg.content)"></div>
         </div>
 
       </div>
@@ -118,11 +119,32 @@
 import { ref, nextTick, onMounted } from 'vue'
 import { useAIStore } from '@/stores/ai'
 import { ElMessageBox } from 'element-plus'
+import { marked } from 'marked'
 
 const aiStore = useAIStore()
 const chatInput = ref('')
 const messagesRef = ref(null)
 const showManagePanel = ref(false)
+
+// 配置 marked
+marked.setOptions({
+  breaks: true, // 支持换行符
+  gfm: true,   // 支持 GitHub Flavored Markdown
+})
+
+// 解析 markdown 内容
+function parseMarkdown(content) {
+  if (!content) return ''
+  // 如果是错误消息或思考中，直接返回文本
+  if (content.startsWith('❌') || content === '思考中...') {
+    return content
+  }
+  try {
+    return marked.parse(content)
+  } catch (e) {
+    return content
+  }
+}
 
 // 滚动到底部
 function scrollToBottom() {
@@ -346,6 +368,55 @@ async function sendMessage() {
   &.isError .aim-chat-content { background: rgba(255,82,82,0.2); border: 1px solid rgba(255,82,82,0.3); color: #ff6b6b; }
   .aim-chat-avatar { width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
   .aim-chat-content {display: inline-block; align-items: center;padding: 10px 14px; border-radius: 12px; background: rgba(255,255,255,0.05); white-space: pre-wrap; word-break: break-all; line-height: 1.6; }
+}
+
+// Markdown 样式
+.markdown-body {
+  pre {
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
+    padding: 12px;
+    margin: 8px 0;
+    overflow-x: auto;
+    code {
+      background: none;
+      padding: 0;
+      font-size: 13px;
+    }
+  }
+  code {
+    background: rgba(0,0,0,0.2);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 13px;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  }
+  p { margin: 8px 0; }
+  ul, ol { margin: 8px 0; padding-left: 24px; }
+  li { margin: 4px 0; }
+  h1, h2, h3, h4, h5, h6 { margin: 12px 0 8px; font-weight: 600; }
+  h1 { font-size: 1.5em; }
+  h2 { font-size: 1.3em; }
+  h3 { font-size: 1.1em; }
+  blockquote {
+    border-left: 3px solid #667eea;
+    padding-left: 12px;
+    margin: 8px 0;
+    color: #a1a1aa;
+  }
+  table {
+    border-collapse: collapse;
+    margin: 8px 0;
+    th, td {
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 8px 12px;
+      text-align: left;
+    }
+    th { background: rgba(0,0,0,0.2); }
+  }
+  a { color: #667eea; text-decoration: none; &:hover { text-decoration: underline; } }
+  img { max-width: 100%; border-radius: 8px; }
+  hr { border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 16px 0; }
 }
 
 .aim-chat-input-area { display: flex; gap: 12px; align-items: flex-end; }
