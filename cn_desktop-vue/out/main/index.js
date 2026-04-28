@@ -4,6 +4,7 @@ const path = require("path");
 const fs = require("fs");
 const { spawn, exec } = require("child_process");
 const pty = require("node-pty");
+const { startBlogServer, stopBlogServer, getBlogServerStatus } = require("./blog-server");
 const isDev = !app.isPackaged;
 const terminals = /* @__PURE__ */ new Map();
 let terminalIdCounter = 0;
@@ -427,6 +428,24 @@ ipcMain.handle("terminal-close", (e, { termId }) => {
   }
   return { success: false, error: "终端不存在" };
 });
+ipcMain.handle("blog-get-status", () => {
+  return getBlogServerStatus();
+});
+ipcMain.handle("blog-start", async (e, { port }) => {
+  return await startBlogServer(port || 3e3);
+});
+ipcMain.handle("blog-stop", async () => {
+  return await stopBlogServer();
+});
+ipcMain.handle("blog-update-db-config", async (e, { config }) => {
+  const { updateConfig } = require("./blog/db");
+  updateConfig(config);
+  return { success: true, message: "数据库配置已更新" };
+});
+ipcMain.handle("blog-test-db", async () => {
+  const { testConnection } = require("./blog/db");
+  return await testConnection();
+});
 process.on("uncaughtException", (err) => console.error("[Uncaught]", err));
 process.on("unhandledRejection", (err) => console.error("[Unhandled]", err));
 app.whenReady().then(() => {
@@ -452,6 +471,15 @@ app.whenReady().then(() => {
   console.log("[App] 运行模式:", isDev ? "开发" : "打包");
   loadConfigFile();
   createWindow();
+  startBlogServer(3001).then((result) => {
+    if (result.success) {
+      console.log("[App] 博客服务启动成功，端口:", result.port);
+    } else {
+      console.warn("[App] 博客服务启动失败:", result.message);
+    }
+  }).catch((err) => {
+    console.error("[App] 博客服务启动错误:", err);
+  });
 }).catch((err) => {
   console.error("[App] Ready 失败:", err);
 });

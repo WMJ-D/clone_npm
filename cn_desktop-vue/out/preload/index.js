@@ -26,5 +26,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   removeTerminalListeners: () => {
     ipcRenderer.removeAllListeners("terminal-data");
     ipcRenderer.removeAllListeners("terminal-exit");
-  }
+  },
+  // 博客服务器 API
+  blogGetStatus: () => ipcRenderer.invoke("blog-get-status"),
+  blogStart: (port) => ipcRenderer.invoke("blog-start", { port }),
+  blogStop: () => ipcRenderer.invoke("blog-stop"),
+  blogTestDb: () => ipcRenderer.invoke("blog-test-db"),
+  blogUpdateDbConfig: (config) => ipcRenderer.invoke("blog-update-db-config", { config })
 });

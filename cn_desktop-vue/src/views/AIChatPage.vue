@@ -86,6 +86,7 @@ const games = [
 const tools = [
   { name: 'Postman', icon: '🚀', route: '/api-tester', desc: 'API 接口请求测试工具' },
   { name: 'JSON格式化', icon: '📋', route: '/json-formatter', desc: 'JSON 格式化、压缩、验证工具' },
+  { name: '个人博客', icon: '📝', route: '/blog', desc: '个人博客系统，支持文章发布、评论、点赞' },
 ]
 
 function openAI(url) {
